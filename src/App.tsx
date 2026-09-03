@@ -9,11 +9,19 @@ import { ReportsAndReceipts } from './components/ReportsAndReceipts';
 import { ArchitectureDocs } from './components/ArchitectureDocs';
 import { AdminPanel } from './components/AdminPanel';
 import { GlobalSearchModal } from './components/GlobalSearchModal';
+import { DevicePairingModal } from './components/DevicePairingModal';
+import { CounterLockScreen } from './components/CounterLockScreen';
+import { AdminLoginPage } from './components/AdminLoginPage';
 import {
-  INITIAL_CUSTOMERS,
-  INITIAL_INVENTORY,
-  INITIAL_MFS_ACCOUNTS,
-  INITIAL_TRANSACTIONS,
+  CLEAN_CUSTOMERS,
+  CLEAN_INVENTORY,
+  CLEAN_MFS_ACCOUNTS,
+  CLEAN_TRANSACTIONS,
+  DEMO_CUSTOMERS,
+  DEMO_INVENTORY,
+  DEMO_MFS_ACCOUNTS,
+  DEMO_TRANSACTIONS,
+  STARTER_INVENTORY_TEMPLATES,
 } from './data/mockData';
 import {
   AuditLog,
@@ -26,12 +34,13 @@ import {
   SupabaseConfig,
   Transaction,
 } from './types';
-import { CheckCircle2, AlertCircle, X, ShieldAlert } from 'lucide-react';
+import { CheckCircle2, AlertCircle, X, ShieldAlert, Sparkles } from 'lucide-react';
 import {
   getSupabaseClient,
   pushAllToSupabase,
   pullAllFromSupabase,
   testSupabaseConnection,
+  subscribeToShopRealtime,
 } from './lib/supabase';
 
 const DEFAULT_SETTINGS: ShopSettings = {
@@ -42,11 +51,15 @@ const DEFAULT_SETTINGS: ShopSettings = {
   phone1: '০১৭১২-৩৪৫৬৭৮',
   phone2: '০১৮১৯-৯৮৭৬৫৪',
   email: 'brothersdigital.bd@gmail.com',
-  openingCashBalance: 15000,
+  openingCashBalance: 0,
   receiptFooterNote: 'আমাদের সেবা গ্রহণ করার জন্য আপনাকে ধন্যবাদ। আবার আসবেন!',
-  receiptType: 'standard',
+  receiptType: 'quarter_a4',
+  adminUsername: 'admin',
+  adminPassword: '1234',
   adminPin: '1234',
-  isPinProtectionEnabled: false,
+  shopKey: 'brothers-digital',
+  isPinProtectionEnabled: true,
+  requireLoginForEntireApp: false,
 };
 
 export default function App() {
@@ -82,25 +95,25 @@ export default function App() {
     };
   });
 
-  // Core Data State with Local Storage persistence
+  // Core Data State - clean by default for production/Netlify
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem('bdc_transactions');
-    return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
+    return saved ? JSON.parse(saved) : CLEAN_TRANSACTIONS;
   });
 
   const [customers, setCustomers] = useState<Customer[]>(() => {
     const saved = localStorage.getItem('bdc_customers');
-    return saved ? JSON.parse(saved) : INITIAL_CUSTOMERS;
+    return saved ? JSON.parse(saved) : CLEAN_CUSTOMERS;
   });
 
   const [inventory, setInventory] = useState<InventoryItem[]>(() => {
     const saved = localStorage.getItem('bdc_inventory');
-    return saved ? JSON.parse(saved) : INITIAL_INVENTORY;
+    return saved ? JSON.parse(saved) : CLEAN_INVENTORY;
   });
 
   const [mfsAccounts, setMfsAccounts] = useState<MFSAccount[]>(() => {
     const saved = localStorage.getItem('bdc_mfs_accounts');
-    return saved ? JSON.parse(saved) : INITIAL_MFS_ACCOUNTS;
+    return saved ? JSON.parse(saved) : CLEAN_MFS_ACCOUNTS;
   });
 
   // Audit Logs
@@ -111,23 +124,28 @@ export default function App() {
       : [
           {
             id: 'log-init',
-            action: 'সিস্টেম ইনিশিয়ালাইজেশন',
-            details: 'ব্রাদার্স ডিজিটাল সেন্টার POS সিস্টেম চালু হয়েছে',
+            action: 'সিস্টেম প্রস্তুত',
+            details: 'ব্রাদার্স ডিজিটাল সেন্টার POS সিস্টেম শুরু হয়েছে',
             timestamp: new Date().toISOString(),
             type: 'system',
           },
         ];
   });
 
-  // Modals & Search
+  // Modals, Pairing & Security Screens
   const [isNewTransactionModalOpen, setIsNewTransactionModalOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [isPairingModalOpen, setIsPairingModalOpen] = useState(false);
+  const [isCounterLocked, setIsCounterLocked] = useState(false);
   const [activeReceiptTransaction, setActiveReceiptTransaction] = useState<Transaction | null>(null);
 
-  // Admin PIN Gate State
-  const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
-  const [pinInput, setPinInput] = useState('');
-  const [pinError, setPinError] = useState(false);
+  // Admin Authentication State
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => {
+    return (
+      localStorage.getItem('bdc_admin_logged_in') === 'true' ||
+      sessionStorage.getItem('bdc_admin_logged_in') === 'true'
+    );
+  });
 
   // Toast notification state
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'info' } | null>(null);
@@ -135,6 +153,25 @@ export default function App() {
   const showToast = (text: string, type: 'success' | 'info' = 'success') => {
     setToastMessage({ text, type });
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleAdminLoginSuccess = (rememberMe: boolean) => {
+    setIsAdminLoggedIn(true);
+    if (rememberMe) {
+      localStorage.setItem('bdc_admin_logged_in', 'true');
+    } else {
+      sessionStorage.setItem('bdc_admin_logged_in', 'true');
+    }
+    addAuditLog('অ্যাডমিন লগইন', 'অ্যাডমিন পোর্টালে সফলভাবে লগইন করা হয়েছে', 'system');
+    showToast('অ্যাডমিন অ্যাকাউন্টে সফলভাবে লগইন হয়েছে!', 'success');
+  };
+
+  const handleAdminLogout = () => {
+    setIsAdminLoggedIn(false);
+    localStorage.removeItem('bdc_admin_logged_in');
+    sessionStorage.removeItem('bdc_admin_logged_in');
+    addAuditLog('অ্যাডমিন লগআউট', 'অ্যাডমিন অ্যাকাউন্ট থেকে লগআউট সম্পন্ন হয়েছে', 'system');
+    showToast('অ্যাডমিন সেশন সমাপ্ত ও লগআউট হয়েছে', 'info');
   };
 
   const addAuditLog = (action: string, details: string, type: AuditLog['type'] = 'system') => {
@@ -148,7 +185,43 @@ export default function App() {
     setAuditLogs((prev) => [newLog, ...prev.slice(0, 199)]);
   };
 
-  // Sync to local storage
+  // 1. First-time Netlify load initialization & Mobile QR Auto-Pairing
+  useEffect(() => {
+    // Check if paired via QR code URL (e.g. ?shopKey=brothers-digital&pin=1234&autoPair=1)
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlShopKey = urlParams.get('shopKey');
+      const urlPin = urlParams.get('pin');
+
+      if (urlShopKey) {
+        const cleanedKey = urlShopKey.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-');
+        setSettings((prev) => ({
+          ...prev,
+          shopKey: cleanedKey,
+          adminPin: urlPin ? urlPin.trim() : prev.adminPin,
+        }));
+
+        // Clean query parameters from URL bar
+        window.history.replaceState({}, document.title, window.location.pathname);
+        showToast(`মোবাইলে শপ "${cleanedKey}" সফলভাবে পেয়ার হয়েছে!`, 'success');
+      }
+
+      // First run cleanup: ensure no stale mock data persists
+      const isInitialized = localStorage.getItem('bdc_clean_initialized_v25');
+      if (!isInitialized) {
+        // If it's a completely fresh start, ensure clean state
+        if (!localStorage.getItem('bdc_transactions')) {
+          setTransactions(CLEAN_TRANSACTIONS);
+          setCustomers(CLEAN_CUSTOMERS);
+          setInventory(CLEAN_INVENTORY);
+          setMfsAccounts(CLEAN_MFS_ACCOUNTS);
+        }
+        localStorage.setItem('bdc_clean_initialized_v25', 'true');
+      }
+    }
+  }, []);
+
+  // 2. Sync to local storage
   useEffect(() => {
     localStorage.setItem('bdc_shop_settings', JSON.stringify(settings));
   }, [settings]);
@@ -177,31 +250,41 @@ export default function App() {
     localStorage.setItem('bdc_audit_logs', JSON.stringify(auditLogs));
   }, [auditLogs]);
 
-  // Global Keyboard Shortcuts (Ctrl+K or Cmd+K for Search)
+  // 3. Global Keyboard Shortcuts (Ctrl+K or Cmd+K for Search)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setIsSearchModalOpen((prev) => !prev);
       }
+      if (e.key === 'Escape') {
+        setIsSearchModalOpen(false);
+        setIsNewTransactionModalOpen(false);
+        setIsPairingModalOpen(false);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Background Cloud Sync
+  // 4. Background Supabase Push helper
   const triggerBackgroundCloudSync = useCallback(async () => {
     if (!supabaseConfig.isConnected || !supabaseConfig.autoSync) return;
     const client = getSupabaseClient(supabaseConfig.url, supabaseConfig.anonKey);
     if (!client) return;
 
     try {
-      await pushAllToSupabase(client, {
-        transactions,
-        customers,
-        inventory,
-        mfsAccounts,
-      });
+      await pushAllToSupabase(
+        client,
+        {
+          transactions,
+          customers,
+          inventory,
+          mfsAccounts,
+          settings,
+        },
+        settings.shopKey || 'brothers-digital'
+      );
       setSupabaseConfig((prev) => ({
         ...prev,
         lastSyncTime: new Date().toISOString(),
@@ -209,7 +292,42 @@ export default function App() {
     } catch (err) {
       console.warn('Background Supabase sync failed:', err);
     }
-  }, [supabaseConfig, transactions, customers, inventory, mfsAccounts]);
+  }, [supabaseConfig, transactions, customers, inventory, mfsAccounts, settings]);
+
+  // 5. Supabase Realtime Listener (Instant sync between PC & Android Mobile)
+  useEffect(() => {
+    const client = getSupabaseClient(supabaseConfig.url, supabaseConfig.anonKey);
+    if (!client || !supabaseConfig.isConnected) return;
+
+    const shopKey = settings.shopKey || 'brothers-digital';
+
+    // Initial pull when connected to load remote data
+    pullAllFromSupabase(client, shopKey).then((res) => {
+      if (res.success && res.data) {
+        if (res.data.transactions.length > 0) setTransactions(res.data.transactions);
+        if (res.data.customers.length > 0) setCustomers(res.data.customers);
+        if (res.data.inventory.length > 0) setInventory(res.data.inventory);
+        if (res.data.mfsAccounts.length > 0) setMfsAccounts(res.data.mfsAccounts);
+      }
+    });
+
+    // Realtime changes subscription
+    const unsubscribe = subscribeToShopRealtime(client, shopKey, () => {
+      pullAllFromSupabase(client, shopKey).then((res) => {
+        if (res.success && res.data) {
+          setTransactions(res.data.transactions);
+          setCustomers(res.data.customers);
+          setInventory(res.data.inventory);
+          setMfsAccounts(res.data.mfsAccounts);
+          showToast('ক্লাউড থেকে রিয়েল-টাইম ডাটা আপডেট পাওয়া গেছে!', 'info');
+        }
+      });
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [supabaseConfig.isConnected, supabaseConfig.url, supabaseConfig.anonKey, settings.shopKey]);
 
   // Financial calculations
   const today = new Date();
@@ -238,7 +356,7 @@ export default function App() {
   const cashExpense = transactions
     .filter((t) => t.type === 'EXPENSE' && t.paymentMethod === 'CASH')
     .reduce((sum, t) => sum + t.amount, 0);
-  const cashInHand = Math.max(0, (settings.openingCashBalance || 15000) + cashIncome - cashExpense);
+  const cashInHand = Math.max(0, (settings.openingCashBalance || 0) + cashIncome - cashExpense);
 
   const lowStockCount = inventory.filter((i) => i.stockQuantity <= i.lowStockThreshold).length;
   const totalCustomerDue = customers.reduce((sum, c) => sum + c.currentDue, 0);
@@ -255,6 +373,7 @@ export default function App() {
       id: `trx-${Date.now()}`,
       invoiceNo,
       timestamp: new Date().toISOString(),
+      shopId: settings.shopKey || 'brothers-digital',
     };
 
     setTransactions((prev) => [newTrx, ...prev]);
@@ -294,6 +413,7 @@ export default function App() {
           totalPaid: 0,
           currentDue: newTrx.amount,
           lastTransactionDate: newTrx.timestamp,
+          shopId: settings.shopKey || 'brothers-digital',
         };
         setCustomers((prev) => [newCustomer, ...prev]);
       }
@@ -359,6 +479,7 @@ export default function App() {
       customerPhone: customer.phone,
       note: note || `বকেয়া খাতা থেকে আদায় - ${customer.name}`,
       timestamp: new Date().toISOString(),
+      shopId: settings.shopKey || 'brothers-digital',
     };
 
     setTransactions((prev) => [paymentTrx, ...prev]);
@@ -383,6 +504,7 @@ export default function App() {
       totalBilled: 0,
       totalPaid: 0,
       lastTransactionDate: new Date().toISOString(),
+      shopId: settings.shopKey || 'brothers-digital',
     };
     setCustomers((prev) => [newCust, ...prev]);
     addAuditLog('নতুন গ্রাহক যোগ', `নাম: ${newCust.name} • মোবাইল: ${newCust.phone}`, 'due');
@@ -439,6 +561,7 @@ export default function App() {
         customerPhone,
         note: `গ্রাহক মোবাইল: ${customerPhone} • মূল টাকা: ৳${amount} • TrxID: ${trxId || 'N/A'}`,
         timestamp: new Date().toISOString(),
+        shopId: settings.shopKey || 'brothers-digital',
       };
       setTransactions((prev) => [mfsTrx, ...prev]);
     }
@@ -449,66 +572,88 @@ export default function App() {
       'mfs'
     );
 
-    showToast(
-      `${provider} ${actionType === 'CASH_OUT' ? 'ক্যাশ-আউট' : 'ক্যাশ-ইন'} সম্পন্ন! কমিশন: ৳${commission}`
-    );
+    showToast(`${provider} ${actionType === 'CASH_OUT' ? 'ক্যাশ-আউট' : 'ক্যাশ-ইন'} সম্পন্ন হয়েছে!`);
     triggerBackgroundCloudSync();
   };
 
-  // Handler: Update MFS balance
-  const handleUpdateMfsBalance = (accountId: string, newBalance: number) => {
+  // Handler: Update MFS Balance manually
+  const handleUpdateMfsBalance = (provider: MfsProvider, newBalance: number) => {
     setMfsAccounts((prev) =>
-      prev.map((acc) => (acc.id === accountId ? { ...acc, balance: newBalance } : acc))
+      prev.map((acc) => (acc.provider === provider ? { ...acc, balance: newBalance } : acc))
     );
-    showToast('ওয়ালেট ব্যালেন্স সমন্বয় করা হয়েছে!');
+    addAuditLog('MFS ব্যালেন্স সমন্বয়', `${provider} ওয়ালেট ব্যালেন্স: ৳${newBalance.toLocaleString()}`, 'mfs');
+    showToast(`${provider} একাউন্ট ব্যালেন্স আপডেট করা হয়েছে!`);
     triggerBackgroundCloudSync();
   };
 
   // Handler: Update Stock
-  const handleUpdateStock = (itemId: string, newQuantity: number) => {
-    const item = inventory.find((i) => i.id === itemId);
+  const handleUpdateStock = (itemId: string, newQty: number) => {
     setInventory((prev) =>
-      prev.map((i) =>
-        i.id === itemId
+      prev.map((item) =>
+        item.id === itemId
           ? {
-              ...i,
-              stockQuantity: newQuantity,
+              ...item,
+              stockQuantity: newQty,
               lastRestocked: new Date().toISOString().slice(0, 10),
             }
-          : i
+          : item
       )
     );
-    if (item) {
-      addAuditLog(
-        'ইনভেন্টরি স্টক সমন্বয়',
-        `পণ্য: ${item.nameBn} • নতুন পরিমাণ: ${newQuantity} ${item.unitBn}`,
-        'inventory'
-      );
-    }
-    showToast('স্টক সফলভাবে আপডেট করা হয়েছে!');
+    showToast('স্টক পরিমাণ সফলভাবে আপডেট হয়েছে!');
     triggerBackgroundCloudSync();
   };
 
-  // Handler: Add New Inventory Item
-  const handleAddNewItem = (itemData: Omit<InventoryItem, 'id' | 'lastRestocked'>) => {
+  // Handler: Add New Item
+  const handleAddNewItem = (
+    itemData: Omit<InventoryItem, 'id' | 'stockQuantity' | 'lastRestocked'> & {
+      initialStock: number;
+    }
+  ) => {
     const newItem: InventoryItem = {
       ...itemData,
       id: `inv-${Date.now()}`,
+      stockQuantity: itemData.initialStock,
       lastRestocked: new Date().toISOString().slice(0, 10),
+      shopId: settings.shopKey || 'brothers-digital',
     };
     setInventory((prev) => [newItem, ...prev]);
-    addAuditLog('নতুন ইনভেন্টরি পণ্য', `পণ্য: ${newItem.nameBn} (কোড: ${newItem.code})`, 'inventory');
-    showToast(`নতুন পণ্য "${newItem.nameBn}" ইনভেন্টরিতে যোগ করা হয়েছে!`);
+    addAuditLog('ইনভেন্টরি আইটেম যোগ', `পণ্য: ${newItem.nameBn} (${newItem.nameEn})`, 'inventory');
+    showToast(`পণ্য "${newItem.nameBn}" ইনভেন্টরিতে যোগ করা হয়েছে!`);
     triggerBackgroundCloudSync();
   };
 
-  // Open receipt for specific transaction
-  const handleOpenReceipt = (trx: Transaction) => {
-    setActiveReceiptTransaction(trx);
-    setActiveTab('reports');
+  // Handler: Clean All Data (Start fresh on Netlify)
+  const handleClearAllData = () => {
+    setTransactions([]);
+    setCustomers([]);
+    setInventory([]);
+    setMfsAccounts(CLEAN_MFS_ACCOUNTS);
+    localStorage.removeItem('bdc_transactions');
+    localStorage.removeItem('bdc_customers');
+    localStorage.removeItem('bdc_inventory');
+    localStorage.setItem('bdc_mfs_accounts', JSON.stringify(CLEAN_MFS_ACCOUNTS));
+    showToast('সকল পূর্ববর্তী ডেটা সফলভাবে মুছে ফেলা হয়েছে! অ্যাপটি সম্পূর্ণ ফ্রেশ প্রস্তুত।', 'success');
+    addAuditLog('ডেটা ফ্রেশ ক্লিন', 'সকল ডেমো রেকর্ড মুছে ফেলা হয়েছে', 'system');
   };
 
-  // Restore complete backup
+  // Handler: Add Starter Templates
+  const handleAddStarterTemplates = () => {
+    setInventory(STARTER_INVENTORY_TEMPLATES);
+    showToast('৭টি সাইবার ও স্টেশনারি আইটেম ইনভেন্টরিতে যুক্ত করা হয়েছে!');
+    addAuditLog('স্টেশনারি টেমপ্লেট যোগ', '৭টি টেমপ্লেট পণ্য ইনভেন্টরিতে যুক্ত', 'inventory');
+    triggerBackgroundCloudSync();
+  };
+
+  // Handler: Reset to Demo Data
+  const handleResetToDemoData = () => {
+    setTransactions(DEMO_TRANSACTIONS);
+    setCustomers(DEMO_CUSTOMERS);
+    setInventory(DEMO_INVENTORY);
+    setMfsAccounts(DEMO_MFS_ACCOUNTS);
+    showToast('নমুনা ডেমো ডেটা সফলভাবে লোড করা হয়েছে!', 'info');
+  };
+
+  // Handler: Restore All Data from Backup
   const handleRestoreAllData = (data: {
     transactions: Transaction[];
     customers: Customer[];
@@ -516,26 +661,17 @@ export default function App() {
     mfsAccounts: MFSAccount[];
     settings?: ShopSettings;
   }) => {
-    if (data.transactions) setTransactions(data.transactions);
-    if (data.customers) setCustomers(data.customers);
-    if (data.inventory) setInventory(data.inventory);
-    if (data.mfsAccounts) setMfsAccounts(data.mfsAccounts);
-    if (data.settings) setSettings(data.settings);
-    addAuditLog('ডাটাবেজ রিস্টোর', 'সম্পূর্ণ ডাটাবেজ ব্যাকআপ ফাইল থেকে রিস্টোর করা হয়েছে', 'system');
-    showToast('সম্পূর্ণ ডাটা সফলভাবে রিস্টোর হয়েছে!');
+    setTransactions(data.transactions);
+    setCustomers(data.customers);
+    setInventory(data.inventory);
+    setMfsAccounts(data.mfsAccounts);
+    if (data.settings) {
+      setSettings(data.settings);
+    }
+    showToast('ব্যাকআপ ফাইল থেকে সফলভাবে তথ্য রিস্টোর করা হয়েছে!');
   };
 
-  // Reset demo data
-  const handleResetToDemoData = () => {
-    setTransactions(INITIAL_TRANSACTIONS);
-    setCustomers(INITIAL_CUSTOMERS);
-    setInventory(INITIAL_INVENTORY);
-    setMfsAccounts(INITIAL_MFS_ACCOUNTS);
-    addAuditLog('ডেমো ডাটা রিসেট', 'নমুনা টেস্ট ডেটা লোড করা হয়েছে', 'system');
-    showToast('ডেমো টেস্ট ডেটা সফলভাবে রিস্টোর হয়েছে!');
-  };
-
-  // Handle Cloud Data Synced
+  // Handler: Data Synced from Cloud
   const handleDataSyncedFromCloud = (cloudData: {
     transactions: Transaction[];
     customers: Customer[];
@@ -546,28 +682,28 @@ export default function App() {
     setCustomers(cloudData.customers);
     setInventory(cloudData.inventory);
     setMfsAccounts(cloudData.mfsAccounts);
-    addAuditLog('ক্লাউড সিঙ্ক সফল', 'Supabase থেকে সর্বশেষ ডেটা পিসি/মোবাইলে লোড করা হয়েছে', 'system');
     showToast('ক্লাউড থেকে সফলভাবে ডেটা সিঙ্ক করা হয়েছে!');
   };
 
-  // Check PIN protection before viewing Admin Panel
-  const handleTabSelect = (tab: string) => {
-    if (tab === 'admin' && settings.isPinProtectionEnabled && !isAdminUnlocked) {
-      setActiveTab('admin');
-    } else {
-      setActiveTab(tab);
-    }
+  // Handler: Pair from Lock Screen
+  const handlePairNewShop = (newShopKey: string, newPin: string) => {
+    setSettings((prev) => ({
+      ...prev,
+      shopKey: newShopKey,
+      adminPin: newPin,
+    }));
+    showToast(`শপ "${newShopKey}" এর সাথে সফলভাবে কানেক্ট হয়েছে!`, 'success');
   };
 
-  const handleUnlockAdmin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (pinInput === settings.adminPin || pinInput === '1234') {
-      setIsAdminUnlocked(true);
-      setPinError(false);
-      setPinInput('');
-    } else {
-      setPinError(true);
-    }
+  // Receipt Modal trigger
+  const handleOpenReceipt = (trx: Transaction) => {
+    setActiveReceiptTransaction(trx);
+    setActiveTab('reports');
+  };
+
+  // Check tab selection
+  const handleTabSelect = (tab: string) => {
+    setActiveTab(tab);
   };
 
   return (
@@ -586,23 +722,45 @@ export default function App() {
         </div>
       )}
 
+      {/* Counter Lock Screen Overlay */}
+      {isCounterLocked && (
+        <CounterLockScreen
+          settings={settings}
+          onUnlock={() => setIsCounterLocked(false)}
+          onPairNewShop={handlePairNewShop}
+        />
+      )}
+
       {/* Main Top Navbar & Metrics */}
       <Navbar
         activeTab={activeTab}
         setActiveTab={handleTabSelect}
         onOpenNewTransaction={() => setIsNewTransactionModalOpen(true)}
         onOpenSearch={() => setIsSearchModalOpen(true)}
+        onOpenPairingModal={() => setIsPairingModalOpen(true)}
+        onLockCounter={() => setIsCounterLocked(true)}
         cashInHand={cashInHand}
         todayNetProfit={todayNetProfit}
         lowStockCount={lowStockCount}
         totalDue={totalCustomerDue}
         settings={settings}
         supabaseConfig={supabaseConfig}
+        isAdminLoggedIn={isAdminLoggedIn}
+        onAdminLogout={handleAdminLogout}
       />
 
       {/* Main Content Body */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
-        {activeTab === 'dashboard' && (
+        {/* If entire app requires admin login and user is not logged in */}
+        {settings.requireLoginForEntireApp && !isAdminLoggedIn ? (
+          <AdminLoginPage
+            settings={settings}
+            onLoginSuccess={handleAdminLoginSuccess}
+            onCancel={() => {}}
+          />
+        ) : (
+          <>
+            {activeTab === 'dashboard' && (
           <Dashboard
             transactions={transactions}
             customers={customers}
@@ -657,36 +815,12 @@ export default function App() {
         )}
 
         {activeTab === 'admin' && (
-          settings.isPinProtectionEnabled && !isAdminUnlocked ? (
-            <div className="max-w-md mx-auto my-12 bg-white p-8 rounded-3xl border border-slate-200 shadow-md text-center space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
-                <ShieldAlert className="w-6 h-6" />
-              </div>
-              <h2 className="text-lg font-black text-slate-900">অ্যাডমিন পিন কোড প্রবেশ করান</h2>
-              <p className="text-xs text-slate-500">
-                সংবেদনশীল সেটিংস ও মাল্টি-ডিভাইস কনফিগারেশনে প্রবেশের জন্য ৪-ডিজিট পিন কোড লিখুন।
-              </p>
-              <form onSubmit={handleUnlockAdmin} className="space-y-3">
-                <input
-                  type="password"
-                  maxLength={6}
-                  autoFocus
-                  value={pinInput}
-                  onChange={(e) => setPinInput(e.target.value)}
-                  placeholder="PIN কোড (যেমন: 1234)"
-                  className="w-full text-center px-4 py-3 rounded-2xl border border-slate-300 text-base font-mono font-black tracking-widest focus:outline-hidden focus:border-indigo-500"
-                />
-                {pinError && (
-                  <p className="text-xs text-rose-600 font-semibold">ভুল পিন কোড! পুনরায় চেষ্টা করুন।</p>
-                )}
-                <button
-                  type="submit"
-                  className="w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs"
-                >
-                  লগইন ও আনলক করুন
-                </button>
-              </form>
-            </div>
+          settings.isPinProtectionEnabled !== false && !isAdminLoggedIn ? (
+            <AdminLoginPage
+              settings={settings}
+              onLoginSuccess={handleAdminLoginSuccess}
+              onCancel={() => setActiveTab('dashboard')}
+            />
           ) : (
             <AdminPanel
               settings={settings}
@@ -700,12 +834,18 @@ export default function App() {
               auditLogs={auditLogs}
               onRestoreAllData={handleRestoreAllData}
               onResetToDemoData={handleResetToDemoData}
+              onClearAllData={handleClearAllData}
+              onAddStarterTemplates={handleAddStarterTemplates}
+              onOpenPairingModal={() => setIsPairingModalOpen(true)}
               onDataSyncedFromCloud={handleDataSyncedFromCloud}
+              onLogout={handleAdminLogout}
             />
           )
         )}
 
         {activeTab === 'architecture' && <ArchitectureDocs />}
+          </>
+        )}
       </main>
 
       {/* Fast Transaction Modal */}
@@ -729,6 +869,15 @@ export default function App() {
         onNavigateToTab={handleTabSelect}
       />
 
+      {/* Device QR Code Pairing Modal */}
+      <DevicePairingModal
+        isOpen={isPairingModalOpen}
+        onClose={() => setIsPairingModalOpen(false)}
+        settings={settings}
+        supabaseConfig={supabaseConfig}
+        onUpdateShopKey={(newKey) => setSettings((prev) => ({ ...prev, shopKey: newKey }))}
+      />
+
       {/* Minimalistic Footer */}
       <footer className="bg-white border-t border-slate-200 py-4 px-4 text-center text-xs text-slate-500 no-print mt-auto">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
@@ -737,7 +886,7 @@ export default function App() {
             <span className="text-slate-400 hidden sm:inline"> • পয়েন্ট অব সেল ও শপ ম্যানেজমেন্ট প্ল্যাটফর্ম</span>
           </div>
           <div className="flex items-center gap-3 text-[11px] text-slate-400">
-            <span>ড্রয়ার ব্যালেন্স: ৳{cashInHand.toLocaleString()}</span>
+            <span>ড্রয়ার ক্যাশ: ৳{cashInHand.toLocaleString()}</span>
             <span>•</span>
             <span className={supabaseConfig.isConnected ? 'text-emerald-700 font-semibold' : 'text-amber-700 font-semibold'}>
               {supabaseConfig.isConnected ? 'ক্লাউড সিঙ্ক চালু (PC + Android)' : 'লোকাল মেমোরি'}

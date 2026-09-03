@@ -22,8 +22,19 @@
   #printable-receipt-card {
     border: 1.5px solid #000 !important;
     box-shadow: none !important;
-    margin: 0 auto !important;
-    max-width: 100% !important;
+    margin: 0 !important;
+    max-width: 8in !important; /* Set custom width */
+    height: 3in !important;    /* Set custom height */
+    position: absolute !important; /* Position absolutely */
+    left: 0 !important;             /* Align to the left */
+    top: 0 !important;              /* Optional: top aligned */
     page-break-inside: avoid !important;
+    /* Remove any default margins or paddings */
+    margin: 0;
+    padding: 0;
+  }
+  @page {
+    size: 297mm 210mm; /* A4 Landscape */
+    margin: 0; /* Remove default page margins */
   }
 }

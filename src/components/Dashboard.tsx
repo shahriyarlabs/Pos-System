@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   Plus,
   Search,
+  Sparkles,
 } from 'lucide-react';
 import { Customer, InventoryItem, MFSAccount, Transaction } from '../types';
 
@@ -175,6 +176,35 @@ export const Dashboard: React.FC<DashboardProps> = ({
           ))}
         </div>
       </div>
+
+      {/* Fresh Clean Slate Onboarding Banner */}
+      {transactions.length === 0 && (
+        <div className="bg-linear-to-r from-emerald-600 via-teal-600 to-indigo-600 text-white p-5 rounded-3xl shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-amber-300 shrink-0" />
+              <h3 className="text-sm font-black">দোকানের খাতা সম্পূর্ণ ফ্রেশ ও ক্লিন প্রস্তুত! (Clean Ready for Shop)</h3>
+            </div>
+            <p className="text-xs text-emerald-100 max-w-xl leading-relaxed">
+              অ্যাপটিতে কোনো পূর্ববর্তী ডেমো বা পরীক্ষামূলক ডাটা নেই। আপনি সরাসরি আপনার দোকানের প্রথম বিক্রয় এন্ট্রি দিতে পারেন অথবা স্টেশনারি মালামাল ইনভেন্টরিতে যুক্ত করতে পারেন।
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <button
+              onClick={onOpenNewTransaction}
+              className="px-4 py-2 rounded-xl bg-white text-emerald-800 font-bold text-xs shadow-xs hover:bg-emerald-50 transition"
+            >
+              + নতুন লেনদেন এন্ট্রি
+            </button>
+            <button
+              onClick={() => onNavigateToTab('inventory')}
+              className="px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs border border-white/20 transition"
+            >
+              ইনভেন্টরি আইটেম যোগ
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 5 Core Metrics Cards as strictly requested */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">

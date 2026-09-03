@@ -22,6 +22,14 @@ import {
   Smartphone,
   Info,
   Layers,
+  Trash2,
+  PackagePlus,
+  QrCode,
+  Lock,
+  Globe,
+  LogOut,
+  User,
+  KeyRound,
 } from 'lucide-react';
 import {
   AuditLog,
@@ -39,6 +47,7 @@ import {
   pullAllFromSupabase,
   getSupabaseClient,
 } from '../lib/supabase';
+import { STARTER_INVENTORY_TEMPLATES } from '../data/mockData';
 
 interface AdminPanelProps {
   settings: ShopSettings;
@@ -58,12 +67,16 @@ interface AdminPanelProps {
     settings?: ShopSettings;
   }) => void;
   onResetToDemoData: () => void;
+  onClearAllData: () => void;
+  onAddStarterTemplates: () => void;
+  onOpenPairingModal: () => void;
   onDataSyncedFromCloud: (cloudData: {
     transactions: Transaction[];
     customers: Customer[];
     inventory: InventoryItem[];
     mfsAccounts: MFSAccount[];
   }) => void;
+  onLogout?: () => void;
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
@@ -78,7 +91,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   auditLogs,
   onRestoreAllData,
   onResetToDemoData,
+  onClearAllData,
+  onAddStarterTemplates,
+  onOpenPairingModal,
   onDataSyncedFromCloud,
+  onLogout,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<
     'cloud_sync' | 'shop_profile' | 'backup_restore' | 'security' | 'audit_logs'
@@ -133,12 +150,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
 
     setIsSyncing(true);
-    const res = await pushAllToSupabase(client, {
-      transactions,
-      customers,
-      inventory,
-      mfsAccounts,
-    });
+    const res = await pushAllToSupabase(
+      client,
+      {
+        transactions,
+        customers,
+        inventory,
+        mfsAccounts,
+        settings,
+      },
+      settings.shopKey || 'brothers-digital'
+    );
     setIsSyncing(false);
 
     if (res.success) {
@@ -161,40 +183,46 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
 
     setIsSyncing(true);
-    const res = await pullAllFromSupabase(client);
+    const res = await pullAllFromSupabase(client, settings.shopKey || 'brothers-digital');
     setIsSyncing(false);
 
     if (res.success && res.data) {
-      onDataSyncedFromCloud(res.data);
+      onDataSyncedFromCloud({
+        transactions: res.data.transactions,
+        customers: res.data.customers,
+        inventory: res.data.inventory,
+        mfsAccounts: res.data.mfsAccounts,
+      });
+      if (res.data.settings) {
+        onUpdateSettings({ ...settings, ...res.data.settings });
+      }
       onUpdateSupabaseConfig({
         ...supabaseConfig,
         lastSyncTime: new Date().toISOString(),
       });
-      alert('সফলভাবে ক্লাউড থেকে সর্বশেষ ডেটা লোড করা হয়েছে!');
+      alert('ক্লাউড থেকে সর্বশেষ ডেটা সফলভাবে ডাউনলোড করা হয়েছে!');
     } else {
-      alert(res.message || 'ক্লাউড থেকে ডেটা আনা যায়নি');
+      alert(res.message || 'ডেটা লোড করতে ব্যর্থ হয়েছে');
     }
   };
 
-  // Copy SQL script
   const copySqlScript = () => {
     navigator.clipboard.writeText(SUPABASE_SETUP_SQL);
     setCopiedSql(true);
-    setTimeout(() => setCopiedSql(false), 2500);
+    setTimeout(() => setCopiedSql(false), 3000);
   };
 
-  // Save Shop Profile
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     onUpdateSettings(profileForm);
     setProfileSaveSuccess(true);
-    setTimeout(() => setProfileSaveSuccess(false), 2500);
+    setTimeout(() => setProfileSaveSuccess(false), 3000);
   };
 
   // Export JSON Backup
   const handleExportBackup = () => {
     const backupData = {
-      version: '1.0',
+      version: '2.5.0',
       exportedAt: new Date().toISOString(),
       shopSettings: settings,
       transactions,
@@ -203,7 +231,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       mfsAccounts,
     };
 
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupData, null, 2));
+    const dataStr =
+      'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupData, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', dataStr);
     downloadAnchor.setAttribute(
@@ -259,15 +288,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">
                 Super Admin
               </span>
+              <span className="text-xs font-mono bg-slate-100 text-slate-700 px-2 py-0.5 rounded-lg border border-slate-200">
+                Shop: {settings.shopKey || 'brothers-digital'}
+              </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              মাল্টি-ডিভাইস ক্লাউড সিঙ্ক (PC & Android), দোকানের প্রোফাইল, নিরাপত্তা ও ডাটা ব্যাকআপ
+              মাল্টি-ডিভাইস ক্লাউড সিঙ্ক (PC & Android), রিয়েল-টাইম ডাটা, দোকানের প্রোফাইল ও নিরাপত্তা
             </p>
           </div>
         </div>
 
-        {/* Sync Status Badge */}
-        <div className="flex items-center gap-3">
+        {/* Sync Status Badge & Quick Actions */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={onOpenPairingModal}
+            className="px-3 py-1.5 rounded-2xl text-xs font-bold bg-indigo-50 text-indigo-800 border border-indigo-200 hover:bg-indigo-100 transition flex items-center gap-1.5"
+          >
+            <QrCode className="w-4 h-4 text-indigo-600" />
+            <span>মোবাইল পেয়ারিং QR</span>
+          </button>
+
           <div
             className={`px-3 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-2 border ${
               supabaseConfig.isConnected
@@ -286,6 +326,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 : 'লোকাল ডিভাইস মেমোরি মোড'}
             </span>
           </div>
+
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              className="px-3.5 py-1.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 hover:text-rose-800 transition flex items-center gap-1.5"
+              title="অ্যাডমিন সেশন শেষ করে লগআউট করুন"
+            >
+              <LogOut className="w-3.5 h-3.5 text-rose-600" />
+              <span>লগআউট (Lock)</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -300,7 +351,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           }`}
         >
           <Cloud className="w-4 h-4" />
-          <span>মাল্টি-ডিভাইস ক্লাউড সিঙ্ক (Supabase)</span>
+          <span>মাল্টি-ডিভাইস ক্লাউড সিঙ্ক (Supabase & Mobile)</span>
         </button>
         <button
           onClick={() => setActiveSubTab('shop_profile')}
@@ -322,7 +373,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           }`}
         >
           <Database className="w-4 h-4" />
-          <span>ডাটা ব্যাকআপ ও রিস্টোর</span>
+          <span>ডাটা ক্লিন, ব্যাকআপ ও রিস্টোর</span>
         </button>
         <button
           onClick={() => setActiveSubTab('security')}
@@ -333,7 +384,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           }`}
         >
           <ShieldCheck className="w-4 h-4" />
-          <span>নিরাপত্তা ও পিন কোড</span>
+          <span>নিরাপত্তা, শপ কী ও পিন কোড</span>
         </button>
         <button
           onClick={() => setActiveSubTab('audit_logs')}
@@ -363,18 +414,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div className="p-2 rounded-xl bg-white/10 text-emerald-400">
                     <Smartphone className="w-5 h-5" />
                   </div>
-                  <h2 className="text-lg font-bold">পিসি ও অ্যান্ড্রয়েড মোবাইলে একযোগে ব্যবহার</h2>
+                  <h2 className="text-lg font-bold">পিসি ও অ্যান্ড্রয়েড মোবাইলে একযোগে রিয়েল-টাইম ব্যবহার</h2>
                 </div>
                 <p className="text-xs text-indigo-100 leading-relaxed max-w-2xl">
-                  হ্যাঁ! একই সাথে আপনার দোকানের কাউন্টার পিসি এবং অ্যান্ড্রয়েড মোবাইল থেকে একই একাউন্টে রিয়েল-টাইমে
-                  লেনদেন, বকেয়া এবং স্টক পরিচালনা করতে একটি অনলাইন ক্লাউড ডেটাবেজ (যেমন <b>Supabase</b>) প্রয়োজন।
-                  আপনার কাছে Supabase অ্যাক্সেস রয়েছে, তাই নিচের ৩টি সহজ ধাপে সংযোগ চালু করুন:
+                  একই সাথে আপনার দোকানের কাউন্টার পিসি এবং অ্যান্ড্রয়েড মোবাইল থেকে একই একাউন্টে রিয়েল-টাইমে
+                  লেনদেন, বকেয়া এবং স্টক পরিচালনা করতে Supabase ফ্রি ডেটাবেজ ব্যবহার করা হচ্ছে।
+                  মোবাইল থেকে কোনো এন্ট্রি করলে ১ সেকেন্ডের মধ্যে পিসিতে দেখাবে, আবার পিসির এন্ট্রি মোবাইলে দেখাবে।
                 </p>
+                <div className="pt-2 flex items-center gap-3">
+                  <button
+                    onClick={onOpenPairingModal}
+                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1.5"
+                  >
+                    <QrCode className="w-4 h-4" />
+                    <span>মোবাইল কিউআর কোড দেখুন</span>
+                  </button>
+                </div>
               </div>
               <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-xs border border-white/10 text-xs shrink-0">
                 <div className="text-slate-300">বর্তমান ক্লাউড অবস্থা:</div>
                 <div className="text-sm font-black text-emerald-400 mt-1">
                   {supabaseConfig.isConnected ? 'সক্রিয় ও রিয়েলটাইম সিঙ্ক চালু' : 'অফলাইন / লোকাল মোড'}
+                </div>
+                <div className="text-[11px] text-indigo-200 mt-1">
+                  দোকানের কোড: <b>{settings.shopKey || 'brothers-digital'}</b>
                 </div>
                 {supabaseConfig.lastSyncTime && (
                   <div className="text-[10px] text-slate-300 mt-1">
@@ -382,6 +445,34 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Netlify Deployment & Realtime FAQ Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-2">
+              <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                <Globe className="w-4 h-4 text-emerald-600" />
+                <span>লগইন সিস্টেম ছাড়া নেটলিফাই (Netlify) লিঙ্কে অন্য কেউ কি ডাটা দেখতে পারবে?</span>
+              </h4>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                <b>না, দেখতে পারবে না!</b> অ্যাপটিতে প্রতিটি দোকানের ডাটা আলাদা <b>Shop Key</b> দিয়ে ফিল্টার করা থাকে।
+                কোনো বহিরাগত ভিজিটর আপনার নেটলিফাই লিঙ্কে ঢুকলে সে সম্পূর্ণ ফাঁকা নতুন খাতা দেখতে পাবে।
+                শুধুমাত্র আপনার মোবাইল দিয়ে কিউআর কোড স্ক্যান করলে বা আপনার সিক্রেট শপ কোড ও ৪-ডিজিট পিন দিলেই
+                আপনার দোকানের ডাটা লোড হবে। এছাড়াও আপনি যেকোনো সময় হেডার থেকে <b>"লক"</b> বোতাম চেপে কাউন্টার বন্ধ রাখতে পারবেন।
+              </p>
+            </div>
+
+            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-2">
+              <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                <Smartphone className="w-4 h-4 text-indigo-600" />
+                <span>মোবাইল ও পিসি কিভাবে পরস্পরকে চিনবে?</span>
+              </h4>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                পিসির হেডার থেকে <b>"মোবাইল পেয়ার (QR)"</b> চাপলে একটি বিশেষ লিঙ্কযুক্ত কিউআর কোড আসবে।
+                মোবাইল ফোনের ক্যামেরা দিয়ে স্ক্যান করলেই ফোনে স্বয়ংক্রিয়ভাবে একই শপ কী ও পিন সেট হয়ে যাবে।
+                উভয় ডিভাইসেই একই Supabase কানেকশন সক্রিয় থাকায় WebSockets দিয়ে নিমিষেই রিয়েল-টাইম ডাটা আদান-প্রদান হবে।
+              </p>
             </div>
           </div>
 
@@ -477,7 +568,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         className="px-4 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs transition flex items-center gap-2 shadow-xs disabled:opacity-50"
                       >
                         <Download className="w-3.5 h-3.5" />
-                        <span>ক্লাউড থেকে ডেটা লোড করুন (Pull Cloud Data)</span>
+                        <span>ক্লাউড থেকে ডেটা আনুন (Pull Cloud Data)</span>
                       </button>
                     </>
                   )}
@@ -508,7 +599,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <p className="text-xs text-slate-600">
-                Supabase এ প্রথমবার সংযোগ করার পর আপনার ডেটাবেজে ৪টি টেবিল (transactions, customers, inventory_items, mfs_accounts) স্বয়ংক্রিয়ভাবে তৈরি করতে SQL Editor এ নিচের কোডটি পেস্ট করে <b>RUN</b> চাপুন:
+                Supabase এ প্রথমবার সংযোগ করার পর আপনার ডেটাবেজে টেবিলগুলো ও রিয়েল-টাইম পাবলিকেশন তৈরি করতে SQL Editor এ নিচের কোডটি পেস্ট করে <b>RUN</b> চাপুন:
               </p>
 
               <div className="bg-slate-900 text-slate-200 p-3 rounded-2xl text-[11px] font-mono h-48 overflow-y-auto border border-slate-800">
@@ -517,7 +608,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
               <div className="pt-2 text-xs text-slate-500 space-y-1">
                 <p>✓ Row Level Security (RLS) স্বয়ংক্রিয়ভাবে সক্রিয় থাকবে।</p>
-                <p>✓ Realtime ডেটা সিঙ্ক পলিসি অন্তর্ভুক্ত করা আছে।</p>
+                <p>✓ মাল্টি-ডিভাইস রিয়েল-টাইম পাবলিকেশন অন্তর্ভুক্ত।</p>
               </div>
             </div>
           </div>
@@ -628,14 +719,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 onChange={(e) =>
                   setProfileForm({
                     ...profileForm,
-                    receiptType: e.target.value as 'standard' | 'thermal',
+                    receiptType: e.target.value as 'standard' | 'thermal' | 'quarter_a4',
                   })
                 }
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-hidden focus:border-indigo-500"
               >
+                <option value="quarter_a4">
+                  ★ এপসন L3210 ভাউচার (১/৪ ল্যান্ডস্কেপ A4 - 148mm × 105mm)
+                </option>
                 <option value="standard">স্ট্যান্ডার্ড ক্যাশ মেমো (A5 / হাফ-পেজ কালার প্রিন্ট)</option>
                 <option value="thermal">থার্মাল পিওএস স্লিপ (58mm / 80mm মিনি প্রিন্টার)</option>
               </select>
+              <span className="text-[10px] text-emerald-700 font-medium mt-1 block">
+                ইপসন L3210 এর জন্য ১/৪ ল্যান্ডস্কেপ A4 ভাউচার ১ পাতায় ৪ টি অথবা সিঙ্গেল প্রিন্ট করা যায়।
+              </span>
             </div>
 
             <div className="md:col-span-2">
@@ -660,127 +757,273 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </form>
       )}
 
-      {/* SubTab 3: Backup & Restore */}
+      {/* SubTab 3: Backup & Restore, Data Clean & Starters */}
       {activeSubTab === 'backup_restore' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-            <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-              <Download className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">সম্পূর্ণ ডাটাবেজ ব্যাকআপ ডাউনলোড</h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                আপনার সমস্ত লেনদেন, গ্রাহকের বকেয়া খাতা, ইনভেন্টরি পণ্য ও মোবাইল ব্যাংকিং তথ্য একটি ফাইলে সংরক্ষণ করুন।
+        <div className="space-y-6">
+          {/* Fresh Clean Slate Control Banner */}
+          <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-amber-950 flex items-center gap-2">
+                <Trash2 className="w-4 h-4 text-rose-600" />
+                <span>নেটলিফাই ডিপ্লয়মেন্টের পর সম্পূর্ণ ডাটা পরিষ্কার করুন (Fresh Start)</span>
+              </h3>
+              <p className="text-xs text-amber-800 leading-relaxed max-w-2xl">
+                আপনি যদি আপনার দোকানে আসল ব্যবসার কাজ শুরু করার জন্য সমস্ত আগের ডেমো লেনদেন, কাস্টমার এবং স্টক মুছে সম্পূর্ণ ফাঁকা করতে চান, তবে নিচের বোতাম চাপুন।
               </p>
             </div>
-
-            <div className="bg-slate-50 p-3.5 rounded-2xl text-xs space-y-1.5 font-medium text-slate-600">
-              <div className="flex justify-between">
-                <span>মোট লেনদেন রেকর্ড:</span>
-                <span className="font-bold text-slate-900">{transactions.length} টি</span>
-              </div>
-              <div className="flex justify-between">
-                <span>মোট রেজিস্টার্ড গ্রাহক:</span>
-                <span className="font-bold text-slate-900">{customers.length} জন</span>
-              </div>
-              <div className="flex justify-between">
-                <span>ইনভেন্টরি পণ্য:</span>
-                <span className="font-bold text-slate-900">{inventory.length} টি</span>
-              </div>
-            </div>
-
-            <button
-              onClick={handleExportBackup}
-              className="w-full py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-xs"
-            >
-              <Download className="w-4 h-4" />
-              <span>ব্যাকআপ ফাইল ডাউনলোড করুন (.JSON)</span>
-            </button>
-          </div>
-
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-              <Upload className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">ব্যাকআপ ফাইল থেকে ডাটা রিস্টোর</h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                পূর্বে সেভ করা যেকোনো JSON ব্যাকআপ ফাইল আপলোড করে ডেটা রিকভার করুন।
-              </p>
-            </div>
-
-            <label className="border-2 border-dashed border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:border-emerald-500 transition">
-              <Upload className="w-6 h-6 text-slate-400 mb-2" />
-              <span className="text-xs font-bold text-slate-700">JSON ব্যাকআপ ফাইল নির্বাচন করুন</span>
-              <span className="text-[10px] text-slate-400 mt-0.5">ফাইল নির্বাচন করলেই স্বয়ংক্রিয়ভাবে রিস্টোর হবে</span>
-              <input type="file" accept=".json" onChange={handleImportBackup} className="hidden" />
-            </label>
-
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-xs text-slate-500">ডেমো টেস্ট ডেটা ফিরিয়ে আনতে চান?</span>
+            <div className="flex flex-wrap gap-2 shrink-0">
               <button
                 onClick={() => {
-                  if (confirm('আপনি কি টেস্ট নমুনা ডেটা রিস্টোর করতে চান?')) {
-                    onResetToDemoData();
+                  if (confirm('আপনি কি নিশ্চিত যে সকল লেনদেন, কাস্টমার ও স্টক মুছে ফেলে অ্যাপটি সম্পূর্ণ নতুন ও ফাঁকা করতে চান?')) {
+                    onClearAllData();
                   }
                 }}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 text-rose-600 hover:bg-rose-50 text-xs font-bold transition flex items-center gap-1"
+                className="px-4 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition flex items-center gap-2 shadow-xs"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>রিসেট ডেমো ডেটা</span>
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>সব ডেটা মুছে ফ্রেশ করুন</span>
               </button>
+
+              <button
+                onClick={() => {
+                  if (confirm('৭টি প্রস্তুত স্টেশনারি ও পেপার আইটেম ইনভেন্টরিতে যুক্ত করতে চান?')) {
+                    onAddStarterTemplates();
+                  }
+                }}
+                className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition flex items-center gap-2 shadow-xs"
+              >
+                <PackagePlus className="w-3.5 h-3.5" />
+                <span>স্টেশনারি আইটেম টেমপ্লেট যোগ করুন</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+              <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                <Download className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">সম্পূর্ণ ডাটাবেজ ব্যাকআপ ডাউনলোড</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  আপনার সমস্ত লেনদেন, গ্রাহকের বকেয়া খাতা, ইনভেন্টরি পণ্য ও মোবাইল ব্যাংকিং তথ্য একটি ফাইলে সংরক্ষণ করুন।
+                </p>
+              </div>
+
+              <div className="bg-slate-50 p-3.5 rounded-2xl text-xs space-y-1.5 font-medium text-slate-600">
+                <div className="flex justify-between">
+                  <span>মোট লেনদেন রেকর্ড:</span>
+                  <span className="font-bold text-slate-900">{transactions.length} টি</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>মোট রেজিস্টার্ড গ্রাহক:</span>
+                  <span className="font-bold text-slate-900">{customers.length} জন</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>ইনভেন্টরি পণ্য:</span>
+                  <span className="font-bold text-slate-900">{inventory.length} টি</span>
+                </div>
+              </div>
+
+              <button
+                onClick={handleExportBackup}
+                className="w-full py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-xs"
+              >
+                <Download className="w-4 h-4" />
+                <span>ব্যাকআপ ফাইল ডাউনলোড করুন (.JSON)</span>
+              </button>
+            </div>
+
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                <Upload className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">ব্যাকআপ ফাইল থেকে ডাটা রিস্টোর</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  পূর্বে সেভ করা যেকোনো JSON ব্যাকআপ ফাইল আপলোড করে ডেটা রিকভার করুন।
+                </p>
+              </div>
+
+              <label className="border-2 border-dashed border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:border-emerald-500 transition">
+                <Upload className="w-6 h-6 text-slate-400 mb-2" />
+                <span className="text-xs font-bold text-slate-700">JSON ব্যাকআপ ফাইল নির্বাচন করুন</span>
+                <span className="text-[10px] text-slate-400 mt-0.5">ফাইল নির্বাচন করলেই স্বয়ংক্রিয়ভাবে রিস্টোর হবে</span>
+                <input type="file" accept=".json" onChange={handleImportBackup} className="hidden" />
+              </label>
+
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-xs text-slate-500">টেস্ট ডেমো ডেটা ফিরিয়ে আনতে চান?</span>
+                <button
+                  onClick={() => {
+                    if (confirm('আপনি কি টেস্ট নমুনা ডেটা রিস্টোর করতে চান?')) {
+                      onResetToDemoData();
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 text-indigo-600 hover:bg-indigo-50 text-xs font-bold transition flex items-center gap-1"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>লোড ডেমো ডেটা</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* SubTab 4: Security & PIN */}
+      {/* SubTab 4: Security, Admin Login & PIN */}
       {activeSubTab === 'security' && (
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs max-w-xl space-y-5">
-          <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-            <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-              <ShieldCheck className="w-5 h-5" />
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs max-w-2xl space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">অ্যাডমিন অ্যাকাউন্ট, লগইন ও সিকিউরিটি</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  অ্যাডমিন লগইন আইডি, পাসওয়ার্ড ও মাল্টি-ডিভাইস সিঙ্ক কোড পরিবর্তন করুন।
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">অ্যাডমিন পিন কোড ও এক্সেস সিকিউরিটি</h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                কর্মচারী বা হেল্পার থাকা অবস্থায় স্পর্শকাতর হিসাব ও সেটিংস সুরক্ষিত রাখুন।
-              </p>
-            </div>
+            {onLogout && (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition flex items-center gap-1.5"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>লগআউট টেস্ট</span>
+              </button>
+            )}
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <span className="text-xs font-bold text-slate-800 block">৪-ডিজিট অ্যাডমিন পিন সুরক্ষা</span>
-                <span className="text-[11px] text-slate-500">
-                  সক্রিয় থাকলে অ্যাডমিন প্যানেল এবং রিপোর্ট দেখার সময় পিন প্রয়োজন হবে
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  অ্যাডমিন ইউজারনেম (Admin Username)
+                </label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <input
+                    type="text"
+                    value={settings.adminUsername || 'admin'}
+                    onChange={(e) =>
+                      onUpdateSettings({
+                        ...settings,
+                        adminUsername: e.target.value.trim(),
+                      })
+                    }
+                    placeholder="admin"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-hidden focus:border-indigo-500"
+                  />
+                </div>
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  লগইন পেজে ইউজারনেম হিসেবে ব্যবহার হবে (ডিফল্ট: admin)
                 </span>
               </div>
-              <input
-                type="checkbox"
-                checked={settings.isPinProtectionEnabled}
-                onChange={(e) =>
-                  onUpdateSettings({ ...settings, isPinProtectionEnabled: e.target.checked })
-                }
-                className="w-5 h-5 accent-indigo-600 rounded-md"
-              />
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  অ্যাডমিন পাসওয়ার্ড (Admin Password)
+                </label>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <input
+                    type="text"
+                    value={settings.adminPassword || settings.adminPin || '1234'}
+                    onChange={(e) =>
+                      onUpdateSettings({
+                        ...settings,
+                        adminPassword: e.target.value.trim(),
+                        adminPin: e.target.value.trim(),
+                      })
+                    }
+                    placeholder="1234"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-xs font-mono font-bold focus:outline-hidden focus:border-indigo-500"
+                  />
+                </div>
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  লগইন পেজ ও সিকিউরিটিতে ব্যবহৃত হবে (ডিফল্ট: 1234)
+                </span>
+              </div>
             </div>
 
-            {settings.isPinProtectionEnabled && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">অ্যাডমিন পিন সেট করুন</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  দোকানের সিঙ্ক কোড (Shop Sync Key)
+                </label>
+                <input
+                  type="text"
+                  value={settings.shopKey || 'brothers-digital'}
+                  onChange={(e) =>
+                    onUpdateSettings({
+                      ...settings,
+                      shopKey: e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, '-'),
+                    })
+                  }
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono font-bold focus:outline-hidden focus:border-indigo-500"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  পিসি এবং অ্যান্ড্রয়েড মোবাইলে একই কোড দিয়ে ডেটা সিঙ্ক হবে।
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  কাউন্টার লক ৪-ডিজিট পিন (Counter PIN)
+                </label>
                 <input
                   type="password"
                   maxLength={6}
-                  value={settings.adminPin}
+                  value={settings.adminPin || '1234'}
                   onChange={(e) => onUpdateSettings({ ...settings, adminPin: e.target.value })}
-                  placeholder="যেমনঃ 1234"
-                  className="w-48 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono font-bold tracking-widest focus:outline-hidden focus:border-indigo-500"
+                  placeholder="1234"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono font-bold tracking-widest focus:outline-hidden focus:border-indigo-500"
                 />
-                <span className="text-[10px] text-slate-400 mt-1 block">ডিফল্ট পিন: 1234</span>
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  কাউন্টার লক স্ক্রিন আনলক করতে ব্যবহৃত হবে (ডিফল্ট: 1234)
+                </span>
               </div>
-            )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 space-y-3">
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                <div>
+                  <span className="text-xs font-bold text-slate-800 block">অ্যাডমিন প্যানেলে লগইন স্ক্রিন সক্রিয়</span>
+                  <span className="text-[11px] text-slate-500">
+                    অ্যাডমিন প্যানেলে ঢুকতে ইউজারনেম ও পাসওয়ার্ড দিয়ে লগইন আবশ্যক হবে
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.isPinProtectionEnabled !== false}
+                  onChange={(e) =>
+                    onUpdateSettings({ ...settings, isPinProtectionEnabled: e.target.checked })
+                  }
+                  className="w-5 h-5 accent-indigo-600 rounded-md"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                <div>
+                  <span className="text-xs font-bold text-slate-800 block">অ্যাপ খোলার শুরুতেই লগইন আবশ্যক (Full Lock)</span>
+                  <span className="text-[11px] text-slate-500">
+                    সক্রিয় থাকলে দোকান ওপেন করার সময় সরাসরি অ্যাডমিন লগইন স্ক্রিন আসবে
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={!!settings.requireLoginForEntireApp}
+                  onChange={(e) =>
+                    onUpdateSettings({ ...settings, requireLoginForEntireApp: e.target.checked })
+                  }
+                  className="w-5 h-5 accent-indigo-600 rounded-md"
+                />
+              </div>
+            </div>
           </div>
         </div>
       )}

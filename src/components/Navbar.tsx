@@ -13,6 +13,9 @@ import {
   Settings,
   Search,
   Cloud,
+  QrCode,
+  Lock,
+  LogOut,
 } from 'lucide-react';
 import { ShopSettings, SupabaseConfig } from '../types';
 
@@ -21,12 +24,16 @@ interface NavbarProps {
   setActiveTab: (tab: string) => void;
   onOpenNewTransaction: () => void;
   onOpenSearch: () => void;
+  onOpenPairingModal: () => void;
+  onLockCounter: () => void;
   cashInHand: number;
   todayNetProfit: number;
   lowStockCount: number;
   totalDue: number;
   settings: ShopSettings;
   supabaseConfig: SupabaseConfig;
+  isAdminLoggedIn?: boolean;
+  onAdminLogout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -34,12 +41,16 @@ export const Navbar: React.FC<NavbarProps> = ({
   setActiveTab,
   onOpenNewTransaction,
   onOpenSearch,
+  onOpenPairingModal,
+  onLockCounter,
   cashInHand,
   todayNetProfit,
   lowStockCount,
   totalDue,
   settings,
   supabaseConfig,
+  isAdminLoggedIn,
+  onAdminLogout,
 }) => {
   const navItems = [
     {
@@ -81,12 +92,18 @@ export const Navbar: React.FC<NavbarProps> = ({
       labelBn: 'অ্যাডমিন প্যানেল',
       labelEn: 'Admin Panel',
       icon: Settings,
-      badge: supabaseConfig.isConnected ? 'Cloud' : undefined,
-      badgeColor: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+      badge: isAdminLoggedIn
+        ? 'লগড-ইন'
+        : supabaseConfig.isConnected
+        ? 'Cloud'
+        : undefined,
+      badgeColor: isAdminLoggedIn
+        ? 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold'
+        : 'bg-indigo-100 text-indigo-700 border-indigo-200',
     },
     {
       id: 'architecture',
-      labelBn: 'সিস্টেম ডক্স',
+      labelBn: 'সিস্টেম ডক্স ও গাইড',
       labelEn: 'System Docs',
       icon: Code2,
     },
@@ -109,7 +126,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             </span>
           </div>
 
-          <div className="flex items-center gap-3 text-[11px] font-medium">
+          <div className="flex items-center gap-2.5 text-[11px] font-medium flex-wrap">
+            {/* Mobile QR Pairing Trigger */}
+            <button
+              onClick={onOpenPairingModal}
+              className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-indigo-900/70 border border-indigo-700 text-indigo-200 hover:bg-indigo-800 transition"
+              title="পিসি ও মোবাইল কিউআর কোড দিয়ে যুক্ত করুন"
+            >
+              <QrCode className="w-3.5 h-3.5 text-indigo-300" />
+              <span>মোবাইল পেয়ার (QR)</span>
+            </button>
+
             {/* Cloud sync status pill */}
             <button
               onClick={() => setActiveTab('admin')}
@@ -126,23 +153,46 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <div className="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-0.5 rounded-lg border border-slate-700">
               <Wallet className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-slate-400">ক্যাশ ইন হ্যান্ড:</span>
+              <span className="text-slate-400">ক্যাশ:</span>
               <span className="text-amber-300 font-bold">৳ {cashInHand.toLocaleString()}</span>
             </div>
             <div className="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-0.5 rounded-lg border border-slate-700">
               <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-slate-400">আজকের লাভ:</span>
+              <span className="text-slate-400">লাভ:</span>
               <span className="text-emerald-300 font-bold">৳ {todayNetProfit.toLocaleString()}</span>
             </div>
-            {lowStockCount > 0 && (
-              <div
-                onClick={() => setActiveTab('inventory')}
-                className="hidden lg:flex items-center gap-1 bg-rose-950/70 border border-rose-700 text-rose-300 px-2 py-0.5 rounded-lg cursor-pointer hover:bg-rose-900 transition"
-                title="কম স্টকের পণ্য দেখতে ক্লিক করুন"
+
+            {/* Lock Screen Trigger */}
+            <button
+              onClick={onLockCounter}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+              title="কাউন্টার লক করুন (PIN সিকিউরিটি)"
+            >
+              <Lock className="w-3 h-3 text-amber-400" />
+              <span className="hidden sm:inline">লক</span>
+            </button>
+
+            {/* Admin Login / Logout button */}
+            {!isAdminLoggedIn ? (
+              <button
+                onClick={() => setActiveTab('admin')}
+                className="flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 border border-indigo-700 transition font-bold"
+                title="অ্যাডমিন লগইন পেজে যান"
               >
-                <AlertTriangle className="w-3 h-3 text-rose-400" />
-                <span>{lowStockCount} আইটেম সতর্কবার্তা</span>
-              </div>
+                <Lock className="w-3 h-3 text-indigo-400" />
+                <span>অ্যাডমিন লগইন</span>
+              </button>
+            ) : (
+              onAdminLogout && (
+                <button
+                  onClick={onAdminLogout}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 transition"
+                  title="অ্যাডমিন থেকে লগআউট করুন"
+                >
+                  <LogOut className="w-3 h-3 text-rose-400" />
+                  <span className="hidden sm:inline">অ্যাডমিন লগআউট</span>
+                </button>
+              )
             )}
           </div>
         </div>
@@ -163,6 +213,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300">
                   POS v2.5
                 </span>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 hidden sm:inline">
+                  {settings.shopKey || 'brothers-digital'}
+                </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
                 {settings.shopSubtitle} • Point of Sale & Digital Services
@@ -170,7 +223,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          <div className="md:hidden flex items-center gap-2">
+          <div className="md:hidden flex items-center gap-1.5">
+            <button
+              onClick={onOpenPairingModal}
+              className="p-2 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200"
+              title="মোবাইল কিউআর"
+            >
+              <QrCode className="w-4 h-4" />
+            </button>
             <button
               onClick={onOpenSearch}
               className="p-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -184,21 +244,31 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white px-3 py-2 rounded-xl text-xs font-bold shadow-xs transition"
             >
               <PlusCircle className="w-4 h-4" />
-              <span>নতুন এন্ট্রি</span>
+              <span>এন্ট্রি</span>
             </button>
           </div>
         </div>
 
         {/* Search Bar & Action Buttons on Desktop */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-2.5">
+          {/* Mobile QR Pair Desktop Button */}
+          <button
+            onClick={onOpenPairingModal}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 text-xs font-bold transition"
+            title="মোবাইল ক্যামেরা দিয়ে স্ক্যান করুন"
+          >
+            <QrCode className="w-4 h-4 text-indigo-600" />
+            <span>মোবাইল পেয়ার</span>
+          </button>
+
           {/* Quick Search Spotlight Trigger */}
           <button
             onClick={onOpenSearch}
-            className="flex items-center gap-3 px-3.5 py-2 rounded-2xl bg-slate-100 hover:bg-slate-200/80 text-slate-500 border border-slate-200 transition text-xs group w-64 justify-between"
+            className="flex items-center gap-3 px-3.5 py-2 rounded-2xl bg-slate-100 hover:bg-slate-200/80 text-slate-500 border border-slate-200 transition text-xs group w-56 justify-between"
           >
             <div className="flex items-center gap-2">
               <Search className="w-4 h-4 text-slate-400 group-hover:text-emerald-600" />
-              <span className="text-slate-600 font-medium">যেকোনো তথ্য খুঁজুন...</span>
+              <span className="text-slate-600 font-medium">তথ্য খুঁজুন...</span>
             </div>
             <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-bold bg-white text-slate-500 rounded border border-slate-200 shadow-2xs">
               Ctrl+K

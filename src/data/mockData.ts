@@ -1,6 +1,165 @@
 import { Customer, InventoryItem, MFSAccount, Transaction } from '../types';
 
-export const INITIAL_CUSTOMERS: Customer[] = [
+// ==========================================
+// CLEAN PRODUCTION DATA (Default for Netlify & Real Shop)
+// ==========================================
+export const CLEAN_CUSTOMERS: Customer[] = [];
+
+export const CLEAN_TRANSACTIONS: Transaction[] = [];
+
+export const CLEAN_INVENTORY: InventoryItem[] = [];
+
+export const CLEAN_MFS_ACCOUNTS: MFSAccount[] = [
+  {
+    id: 'mfs-bkash',
+    provider: 'BKASH',
+    accountName: 'বিকাশ এজেন্ট (bKash)',
+    agentNumber: '',
+    balance: 0,
+    commissionEarnedToday: 0,
+    cashInToday: 0,
+    cashOutToday: 0,
+    color: '#E2136E',
+  },
+  {
+    id: 'mfs-nagad',
+    provider: 'NAGAD',
+    accountName: 'নগদ এজেন্ট (Nagad)',
+    agentNumber: '',
+    balance: 0,
+    commissionEarnedToday: 0,
+    cashInToday: 0,
+    cashOutToday: 0,
+    color: '#F7941D',
+  },
+  {
+    id: 'mfs-rocket',
+    provider: 'ROCKET',
+    accountName: 'রকেট এজেন্ট (Rocket)',
+    agentNumber: '',
+    balance: 0,
+    commissionEarnedToday: 0,
+    cashInToday: 0,
+    cashOutToday: 0,
+    color: '#8C3494',
+  },
+];
+
+// By default, initialize with 100% clean data (No dummy sales, no dummy customers)
+export const INITIAL_CUSTOMERS: Customer[] = CLEAN_CUSTOMERS;
+export const INITIAL_TRANSACTIONS: Transaction[] = CLEAN_TRANSACTIONS;
+export const INITIAL_INVENTORY: InventoryItem[] = CLEAN_INVENTORY;
+export const INITIAL_MFS_ACCOUNTS: MFSAccount[] = CLEAN_MFS_ACCOUNTS;
+
+// ==========================================
+// STARTER INVENTORY TEMPLATES (Useful Cyber Cafe / Shop items)
+// Users can add these in 1-click if they don't want to type names from scratch
+// ==========================================
+export const STARTER_INVENTORY_TEMPLATES: InventoryItem[] = [
+  {
+    id: 'tpl-1',
+    code: 'PAP-A4-80',
+    nameBn: 'A4 পেপার রিম (ডাবল এ ৮০ জিএসএম)',
+    nameEn: 'A4 Paper Ream Double-A 80GSM',
+    category: 'paper',
+    stockQuantity: 0,
+    unit: 'Ream',
+    unitBn: 'রিম',
+    purchasePrice: 480,
+    sellingPrice: 560,
+    lowStockThreshold: 5,
+    lastRestocked: new Date().toISOString().slice(0, 10),
+  },
+  {
+    id: 'tpl-2',
+    code: 'PAP-A4-70',
+    nameBn: 'A4 পেপার রিম (পেপার লাইন ৭০ জিএসএম)',
+    nameEn: 'A4 Paper Ream 70GSM',
+    category: 'paper',
+    stockQuantity: 0,
+    unit: 'Ream',
+    unitBn: 'রিম',
+    purchasePrice: 420,
+    sellingPrice: 490,
+    lowStockThreshold: 5,
+    lastRestocked: new Date().toISOString().slice(0, 10),
+  },
+  {
+    id: 'tpl-3',
+    code: 'PAP-LEG-80',
+    nameBn: 'লিগ্যাল পেপার রিম (৮০ জিএসএম)',
+    nameEn: 'Legal Size Paper Ream 80GSM',
+    category: 'paper',
+    stockQuantity: 0,
+    unit: 'Ream',
+    unitBn: 'রিম',
+    purchasePrice: 580,
+    sellingPrice: 680,
+    lowStockThreshold: 3,
+    lastRestocked: new Date().toISOString().slice(0, 10),
+  },
+  {
+    id: 'tpl-4',
+    code: 'GLOSS-PHOTO-4R',
+    nameBn: 'গ্লসি ফটো পেপার ৪R (১০০ পিস)',
+    nameEn: 'Glossy Photo Paper 4R (100 pcs)',
+    category: 'supplies',
+    stockQuantity: 0,
+    unit: 'Pack',
+    unitBn: 'প্যাকেট',
+    purchasePrice: 220,
+    sellingPrice: 300,
+    lowStockThreshold: 3,
+    lastRestocked: new Date().toISOString().slice(0, 10),
+  },
+  {
+    id: 'tpl-5',
+    code: 'LAM-POUCH-A4',
+    nameBn: 'লেমিনেশন পাউচ A4 (১০০ পিস)',
+    nameEn: 'Laminating Pouch Film A4 (100 pcs)',
+    category: 'supplies',
+    stockQuantity: 0,
+    unit: 'Pack',
+    unitBn: 'প্যাকেট',
+    purchasePrice: 380,
+    sellingPrice: 500,
+    lowStockThreshold: 3,
+    lastRestocked: new Date().toISOString().slice(0, 10),
+  },
+  {
+    id: 'tpl-6',
+    code: 'LAM-POUCH-ID',
+    nameBn: 'এনআইডি সাইজ লেমিনেশন পাউচ (১০০ পিস)',
+    nameEn: 'ID Card Laminating Pouch (100 pcs)',
+    category: 'supplies',
+    stockQuantity: 0,
+    unit: 'Pack',
+    unitBn: 'প্যাকেট',
+    purchasePrice: 120,
+    sellingPrice: 200,
+    lowStockThreshold: 5,
+    lastRestocked: new Date().toISOString().slice(0, 10),
+  },
+  {
+    id: 'tpl-7',
+    code: 'USB-32GB-SANDISK',
+    nameBn: 'সানডিস্ক ৩২জিবি পেনড্রাইভ (USB 3.0)',
+    nameEn: 'SanDisk 32GB USB 3.0 Pendrive',
+    category: 'electronics',
+    stockQuantity: 0,
+    unit: 'Pcs',
+    unitBn: 'টি',
+    purchasePrice: 420,
+    sellingPrice: 550,
+    lowStockThreshold: 2,
+    lastRestocked: new Date().toISOString().slice(0, 10),
+  },
+];
+
+// ==========================================
+// DEMO / TEST DATA (Available on demand in Admin Panel for testing)
+// ==========================================
+export const DEMO_CUSTOMERS: Customer[] = [
   {
     id: 'cust-1',
     name: 'মাওলানা আব্দুল করিম (Karim Maulana)',
@@ -34,31 +193,9 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     lastTransactionDate: new Date(Date.now() - 3600000 * 48).toISOString(),
     notes: 'রিম কাগজ ও ক্যাবল পাইকারি নেন',
   },
-  {
-    id: 'cust-4',
-    name: 'তানজিলা আক্তার (Tanjila Akter)',
-    phone: '01633-556677',
-    address: 'শান্তিনগর পাড়া',
-    totalBilled: 1400,
-    totalPaid: 1100,
-    currentDue: 300,
-    lastTransactionDate: new Date(Date.now() - 3600000 * 12).toISOString(),
-    notes: 'বিসিএস ও চাকরির আবেদন ফর্ম পূরণ',
-  },
-  {
-    id: 'cust-5',
-    name: 'ফারুক ট্রেডার্স (Faruk Traders)',
-    phone: '01788-990011',
-    address: 'মেইন রোড, আড়ত পট্টি',
-    totalBilled: 12500,
-    totalPaid: 10000,
-    currentDue: 2500,
-    lastTransactionDate: new Date(Date.now() - 3600000 * 72).toISOString(),
-    notes: 'মাসিক চালান ও ক্যাশ মেমো প্রিন্টিং',
-  },
 ];
 
-export const INITIAL_MFS_ACCOUNTS: MFSAccount[] = [
+export const DEMO_MFS_ACCOUNTS: MFSAccount[] = [
   {
     id: 'mfs-bkash',
     provider: 'BKASH',
@@ -94,7 +231,7 @@ export const INITIAL_MFS_ACCOUNTS: MFSAccount[] = [
   },
 ];
 
-export const INITIAL_INVENTORY: InventoryItem[] = [
+export const DEMO_INVENTORY: InventoryItem[] = [
   {
     id: 'inv-1',
     code: 'PAP-A4-80',
@@ -115,7 +252,7 @@ export const INITIAL_INVENTORY: InventoryItem[] = [
     nameBn: 'A4 পেপার রিম (পেপার লাইন ৭০ জিএসএম)',
     nameEn: 'A4 Paper Ream 70GSM',
     category: 'paper',
-    stockQuantity: 6, // Low stock!
+    stockQuantity: 6,
     unit: 'Ream',
     unitBn: 'রিম',
     purchasePrice: 420,
@@ -123,110 +260,12 @@ export const INITIAL_INVENTORY: InventoryItem[] = [
     lowStockThreshold: 10,
     lastRestocked: '2026-08-20',
   },
-  {
-    id: 'inv-3',
-    code: 'PAP-LEG-80',
-    nameBn: 'লিগ্যাল পেপার রিম (৮০ জিএসএম)',
-    nameEn: 'Legal Size Paper Ream 80GSM',
-    category: 'paper',
-    stockQuantity: 8,
-    unit: 'Ream',
-    unitBn: 'রিম',
-    purchasePrice: 580,
-    sellingPrice: 680,
-    lowStockThreshold: 5,
-    lastRestocked: '2026-08-25',
-  },
-  {
-    id: 'inv-4',
-    code: 'GLOSS-PHOTO-4R',
-    nameBn: 'গ্লসি ফটো পেপার ৪R (প্যাকেট ১০০ পিস)',
-    nameEn: 'Glossy Photo Paper 4R (100 pcs)',
-    category: 'supplies',
-    stockQuantity: 4, // Low stock!
-    unit: 'Pack',
-    unitBn: 'প্যাকেট',
-    purchasePrice: 220,
-    sellingPrice: 300,
-    lowStockThreshold: 8,
-    lastRestocked: '2026-08-15',
-  },
-  {
-    id: 'inv-5',
-    code: 'LAM-POUCH-A4',
-    nameBn: 'লেমিনেশন পাউচ A4 (১০০ পিস)',
-    nameEn: 'Laminating Pouch Film A4 (100 pcs)',
-    category: 'supplies',
-    stockQuantity: 7,
-    unit: 'Pack',
-    unitBn: 'প্যাকেট',
-    purchasePrice: 380,
-    sellingPrice: 500,
-    lowStockThreshold: 5,
-    lastRestocked: '2026-08-27',
-  },
-  {
-    id: 'inv-6',
-    code: 'LAM-POUCH-ID',
-    nameBn: 'এনআইডি সাইজ লেমিনেশন পাউচ (১০০ পিস)',
-    nameEn: 'ID Card Laminating Pouch (100 pcs)',
-    category: 'supplies',
-    stockQuantity: 15,
-    unit: 'Pack',
-    unitBn: 'প্যাকেট',
-    purchasePrice: 120,
-    sellingPrice: 200,
-    lowStockThreshold: 8,
-    lastRestocked: '2026-08-26',
-  },
-  {
-    id: 'inv-7',
-    code: 'USB-32GB-SANDISK',
-    nameBn: 'সানডিস্ক ৩২জিবি পেনড্রাইভ (USB 3.0)',
-    nameEn: 'SanDisk 32GB USB 3.0 Pendrive',
-    category: 'electronics',
-    stockQuantity: 9,
-    unit: 'Pcs',
-    unitBn: 'টি',
-    purchasePrice: 420,
-    sellingPrice: 550,
-    lowStockThreshold: 5,
-    lastRestocked: '2026-08-22',
-  },
-  {
-    id: 'inv-8',
-    code: 'CBL-TYPE-C-FAST',
-    nameBn: 'টাইপ-সি ফাস্ট চার্জিং ক্যাবল (ব্র্যান্ডেড)',
-    nameEn: 'Type-C Fast Charging Cable',
-    category: 'electronics',
-    stockQuantity: 14,
-    unit: 'Pcs',
-    unitBn: 'টি',
-    purchasePrice: 85,
-    sellingPrice: 160,
-    lowStockThreshold: 6,
-    lastRestocked: '2026-08-24',
-  },
-  {
-    id: 'inv-9',
-    code: 'STAMP-NON-JUD',
-    nameBn: 'নন-জুডিশিয়াল স্ট্যাম্প পেপার ১০০টাকা',
-    nameEn: 'Non-Judicial Stamp Paper 100 Tk',
-    category: 'stationery',
-    stockQuantity: 3, // Low stock!
-    unit: 'Pcs',
-    unitBn: 'টি',
-    purchasePrice: 105,
-    sellingPrice: 130,
-    lowStockThreshold: 10,
-    lastRestocked: '2026-08-10',
-  },
 ];
 
 const now = Date.now();
 const getPastDate = (hoursAgo: number) => new Date(now - hoursAgo * 3600000).toISOString();
 
-export const INITIAL_TRANSACTIONS: Transaction[] = [
+export const DEMO_TRANSACTIONS: Transaction[] = [
   {
     id: 'trx-101',
     invoiceNo: 'BDC-2026-001',
@@ -256,104 +295,5 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     customerPhone: '01712-345678',
     note: '৫০ পৃষ্ঠা ডাবল সাইড ফটোকপি',
     timestamp: getPastDate(2.5),
-  },
-  {
-    id: 'trx-103',
-    invoiceNo: 'BDC-2026-003',
-    type: 'INCOME',
-    category: 'print_color',
-    categoryLabelBn: 'কালার ফটো প্রিন্ট ও ল্যাব',
-    categoryLabelEn: 'Color Photo Printing',
-    amount: 280,
-    paymentMethod: 'BKASH',
-    paymentMethodLabelBn: 'বিকাশ',
-    customerName: 'সুমাইয়া জাহান',
-    customerPhone: '01823-456711',
-    note: '৮ কপি পাসপোর্ট সাইজ স্টুডিও ছবি',
-    timestamp: getPastDate(3.8),
-  },
-  {
-    id: 'trx-104',
-    invoiceNo: 'BDC-2026-004',
-    type: 'EXPENSE',
-    category: 'tea_snacks',
-    categoryLabelBn: 'নাস্তা ও আপ্যায়ন',
-    categoryLabelEn: 'Tea & Snacks',
-    amount: 120,
-    paymentMethod: 'CASH',
-    paymentMethodLabelBn: 'ক্যাশ নগদ',
-    note: 'দোকানের চা ও বিস্কুট খরচ',
-    timestamp: getPastDate(4.5),
-  },
-  {
-    id: 'trx-105',
-    invoiceNo: 'BDC-2026-005',
-    type: 'INCOME',
-    category: 'product_sale',
-    categoryLabelBn: 'পেনড্রাইভ ও ক্যাবল বিক্রি',
-    categoryLabelEn: 'SanDisk 32GB USB Sale',
-    amount: 550,
-    paymentMethod: 'NAGAD',
-    paymentMethodLabelBn: 'নগদ MFS',
-    customerName: 'জাকির হোসেন',
-    customerPhone: '01922-334455',
-    note: '৩২ জিবি সানডিস্ক পেনড্রাইভ ১ পিস',
-    linkedInventoryId: 'inv-7',
-    timestamp: getPastDate(5.2),
-  },
-  {
-    id: 'trx-106',
-    invoiceNo: 'BDC-2026-006',
-    type: 'INCOME',
-    category: 'laminating',
-    categoryLabelBn: 'লেমিনেশন সার্ভিস',
-    categoryLabelEn: 'Certificate Laminating',
-    amount: 100,
-    paymentMethod: 'CASH',
-    paymentMethodLabelBn: 'ক্যাশ নগদ',
-    note: '২টি সার্টিফিকেট লেমিনেশন',
-    timestamp: getPastDate(6.0),
-  },
-  {
-    id: 'trx-107',
-    invoiceNo: 'BDC-2026-007',
-    type: 'INCOME',
-    category: 'print_bw',
-    categoryLabelBn: 'কম্পিউটার প্রিন্ট (ব্লাক অ্যান্ড হোয়াইট)',
-    categoryLabelEn: 'B&W Document Print',
-    amount: 450,
-    paymentMethod: 'DUE',
-    paymentMethodLabelBn: 'বকেয়া (Due)',
-    customerName: 'মোঃ রাসেল আহমেদ',
-    customerPhone: '01819-987654',
-    customerId: 'cust-2',
-    note: 'প্রজেক্ট রিপোর্ট প্রিন্ট ৪৫ পৃষ্ঠা (বাকি রাখা হয়েছে)',
-    timestamp: getPastDate(7.1),
-  },
-  {
-    id: 'trx-108',
-    invoiceNo: 'BDC-2026-008',
-    type: 'EXPENSE',
-    category: 'supplies',
-    categoryLabelBn: 'কালি ও টোনার রিফিল',
-    categoryLabelEn: 'Canon Cartridge Ink Refill',
-    amount: 650,
-    paymentMethod: 'CASH',
-    paymentMethodLabelBn: 'ক্যাশ নগদ',
-    note: 'ক্যানন প্রিন্টার ব্ল্যাক ইংক রিফিল বোতল',
-    timestamp: getPastDate(8.5),
-  },
-  {
-    id: 'trx-109',
-    invoiceNo: 'BDC-2026-009',
-    type: 'INCOME',
-    category: 'mfs_fee',
-    categoryLabelBn: 'বিকাশ ও নগদ কমিশন',
-    categoryLabelEn: 'MFS Cash-Out Commission',
-    amount: 180,
-    paymentMethod: 'CASH',
-    paymentMethodLabelBn: 'ক্যাশ নগদ',
-    note: 'দৈনিক নগদ ক্যাশ-আউট গ্রাহক সার্ভিস চার্জ',
-    timestamp: getPastDate(9.0),
   },
 ];

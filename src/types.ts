@@ -48,6 +48,7 @@ export interface Transaction {
   timestamp: string; // ISO date string
   mfsAccountId?: string;
   linkedInventoryId?: string;
+  shopId?: string;
 }
 
 export interface Customer {
@@ -60,6 +61,7 @@ export interface Customer {
   currentDue: number;
   lastTransactionDate: string;
   notes?: string;
+  shopId?: string;
 }
 
 export interface DuePaymentRecord {
@@ -84,6 +86,7 @@ export interface MFSAccount {
   cashInToday: number;
   cashOutToday: number;
   color: string;
+  shopId?: string;
 }
 
 export interface MfsLog {
@@ -96,6 +99,7 @@ export interface MfsLog {
   customerPhone: string;
   trxId?: string;
   timestamp: string;
+  shopId?: string;
 }
 
 export interface InventoryItem {
@@ -111,6 +115,7 @@ export interface InventoryItem {
   sellingPrice: number;
   lowStockThreshold: number;
   lastRestocked: string;
+  shopId?: string;
 }
 
 export interface DailySummary {
@@ -133,9 +138,14 @@ export interface ShopSettings {
   email: string;
   openingCashBalance: number;
   receiptFooterNote: string;
-  receiptType: 'standard' | 'thermal';
+  receiptType: 'standard' | 'thermal' | 'quarter_a4';
   adminPin: string;
+  adminUsername?: string;
+  adminPassword?: string;
   isPinProtectionEnabled: boolean;
+  shopKey: string;
+  isCounterLocked?: boolean;
+  requireLoginForEntireApp?: boolean;
 }
 
 export interface SupabaseConfig {
