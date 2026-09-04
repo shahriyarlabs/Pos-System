@@ -713,25 +713,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">ডিফল্ট রসিদের ধরন (Print Format)</label>
-              <select
-                value={profileForm.receiptType}
-                onChange={(e) =>
-                  setProfileForm({
-                    ...profileForm,
-                    receiptType: e.target.value as 'standard' | 'thermal' | 'quarter_a4',
-                  })
-                }
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-hidden focus:border-indigo-500"
-              >
-                <option value="quarter_a4">
-                  ★ এপসন L3210 ভাউচার (১/৪ ল্যান্ডস্কেপ A4 - 148mm × 105mm)
-                </option>
-                <option value="standard">স্ট্যান্ডার্ড ক্যাশ মেমো (A5 / হাফ-পেজ কালার প্রিন্ট)</option>
-                <option value="thermal">থার্মাল পিওএস স্লিপ (58mm / 80mm মিনি প্রিন্টার)</option>
-              </select>
+              <label className="block text-xs font-bold text-slate-700 mb-1">রসিদের প্রিন্ট ফরম্যাট (Print Format)</label>
+              <div className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-800 flex items-center justify-between">
+                <span>A4 ল্যান্ডস্কেপ (ডান পাশে একক ভাউচার • L: 8″ × W: 3″)</span>
+                <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold">স্থিরীকৃত</span>
+              </div>
               <span className="text-[10px] text-emerald-700 font-medium mt-1 block">
-                ইপসন L3210 এর জন্য ১/৪ ল্যান্ডস্কেপ A4 ভাউচার ১ পাতায় ৪ টি অথবা সিঙ্গেল প্রিন্ট করা যায়।
+                যেকোনো প্রিন্টারে (যেমন এপসন L3210 বা অন্য যেকোনো প্রিন্টার) A4 পেপারের ডান প্রান্তে ভাউচার প্রিন্ট হবে।
               </span>
             </div>
 
