@@ -132,6 +132,7 @@ export interface ShopSettings {
   shopName: string;
   shopSubtitle: string;
   ownerName: string;
+  shopLogo?: string; // Logo image URL or base64 data URI
   address: string;
   phone1: string;
   phone2: string;
@@ -162,4 +163,14 @@ export interface AuditLog {
   details: string;
   timestamp: string;
   type: 'transaction' | 'due' | 'mfs' | 'inventory' | 'system';
+}
+
+export interface UserSession {
+  username: string;
+  name: string;
+  shopId: string;
+  shopName: string;
+  shopLogo?: string;
+  role: 'owner' | 'admin' | 'cashier';
+  loginTime: string;
 }

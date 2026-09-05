@@ -1,0 +1,218 @@
+{
+  "users": [
+    {
+      "id": "user-admin-1",
+      "username": "admin",
+      "passwordHash": "2ef8f57bfd5324b89cdf5e20c61a1c302593be849d730746802ee4e99770c2f6",
+      "name": "মোহাম্মদ রফিক",
+      "shopName": "ব্রাদার্স ডিজিটাল সেন্টার",
+      "phone": "০১৭১২-৩৪৫৬৭৮",
+      "address": "বাজার মেইন রোড, ডিজিটাল মোড়",
+      "createdAt": "2026-09-05T10:57:54.170Z"
+    }
+  ],
+  "sessions": [
+    {
+      "token": "780b6509c169c951ee072655e0bb4f69897b62dc7b71e7b203b4270198f5d551",
+      "userId": "user-admin-1",
+      "createdAt": "2026-09-05T10:57:59.315Z",
+      "expiresAt": "2027-09-05T10:57:59.315Z"
+    }
+  ],
+  "shops": {
+    "user-admin-1": {
+      "userId": "user-admin-1",
+      "settings": {
+        "shopName": "ব্রাদার্স ডিজিটাল সেন্টার",
+        "shopSubtitle": "Brothers Digital Center & Cyber Point",
+        "ownerName": "মোহাম্মদ রফিক ও পারভেজ",
+        "address": "বাজার মেইন রোড, ডিজিটাল মোড়, ওয়ার্ড নং ০৩",
+        "phone1": "০১৭১২-৩৪৫৬৭৮",
+        "phone2": "০১৮১৯-৯৮৭৬৫৪",
+        "email": "brothersdigital.bd@gmail.com",
+        "openingCashBalance": 2500,
+        "receiptFooterNote": "আমাদের সেবা গ্রহণ করার জন্য আপনাকে ধন্যবাদ। আবার আসবেন!",
+        "receiptType": "quarter_a4",
+        "adminUsername": "admin",
+        "adminPassword": "1234",
+        "adminPin": "1234",
+        "shopKey": "brothers-digital",
+        "isPinProtectionEnabled": true,
+        "requireLoginForEntireApp": true
+      },
+      "transactions": [
+        {
+          "type": "INCOME",
+          "category": "photocopy",
+          "categoryLabelBn": "ফটোকপি",
+          "amount": 50,
+          "paymentMethod": "CASH",
+          "paymentMethodLabelBn": "ক্যাশ নগদ",
+          "id": "trx-1788605885679-4cd5b7",
+          "timestamp": "2026-09-05T10:58:05.679Z"
+        },
+        {
+          "id": "trx-1",
+          "invoiceNo": "BDC-1001",
+          "type": "INCOME",
+          "category": "photocopy",
+          "categoryLabelBn": "ফটোকপি সেবা",
+          "categoryLabelEn": "Photocopy Service",
+          "amount": 150,
+          "paymentMethod": "CASH",
+          "paymentMethodLabelBn": "নগদ ক্যাশ",
+          "customerName": "সাধারণ খদ্দের",
+          "timestamp": "2026-09-05T08:57:54.169Z",
+          "note": "৫০ পাতা এ৪ ফটোকপি"
+        },
+        {
+          "id": "trx-2",
+          "invoiceNo": "BDC-1002",
+          "type": "INCOME",
+          "category": "online_form",
+          "categoryLabelBn": "অনলাইন আবেদন ও প্রিন্ট",
+          "categoryLabelEn": "Online Application & Print",
+          "amount": 200,
+          "paymentMethod": "CASH",
+          "paymentMethodLabelBn": "নগদ ক্যাশ",
+          "customerName": "সুমন আহমেদ",
+          "customerPhone": "০১৯১২-৮৮৯৯০০",
+          "timestamp": "2026-09-05T09:57:54.169Z",
+          "note": "চাকরির আবেদন ও রঙিন ছবি প্রিন্ট"
+        },
+        {
+          "id": "trx-3",
+          "invoiceNo": "BDC-1003",
+          "type": "EXPENSE",
+          "category": "tea_snacks",
+          "categoryLabelBn": "চা-নাস্তা ও আপ্যায়ন",
+          "categoryLabelEn": "Tea & Snacks",
+          "amount": 60,
+          "paymentMethod": "CASH",
+          "paymentMethodLabelBn": "নগদ ক্যাশ",
+          "timestamp": "2026-09-05T10:27:54.169Z",
+          "note": "দোকানের চা ও বিস্কুট খরচ"
+        }
+      ],
+      "customers": [
+        {
+          "id": "cust-1",
+          "name": "আব্দুল করিম সাহেব",
+          "phone": "০১৭৫১-০০১১২২",
+          "address": "উত্তর পাড়া, বাজার রোড",
+          "totalBilled": 1250,
+          "totalPaid": 850,
+          "currentDue": 400,
+          "lastTransactionDate": "2026-09-05T10:57:54.169Z",
+          "notes": "স্কুলের শিক্ষক, বিশ্বস্ত খদ্দের"
+        },
+        {
+          "id": "cust-2",
+          "name": "মো: জসীম উদ্দিন (ঠিকাদার)",
+          "phone": "০১৮১৬-৩৩৪৪৫৫",
+          "address": "থানা মোড়",
+          "totalBilled": 3400,
+          "totalPaid": 2600,
+          "currentDue": 800,
+          "lastTransactionDate": "2026-09-05T10:57:54.169Z",
+          "notes": "ফটোকপি ও ড্রাফটিং কাজের জন্য বিল বাকি"
+        }
+      ],
+      "inventory": [
+        {
+          "id": "inv-1",
+          "code": "A4-70GSM",
+          "nameBn": "এ৪ ফটোকপি কাগজ (৭০ জিএসএম)",
+          "nameEn": "A4 Photocopy Paper (Double A)",
+          "category": "paper",
+          "stockQuantity": 18,
+          "unit": "রিম (Ream)",
+          "unitBn": "রিম",
+          "purchasePrice": 380,
+          "sellingPrice": 450,
+          "lowStockThreshold": 5,
+          "lastRestocked": "2026-09-05T10:57:54.169Z"
+        },
+        {
+          "id": "inv-2",
+          "code": "PEN-MATADOR",
+          "nameBn": "ম্যাটাডোর বলপেন (কালো/নীল)",
+          "nameEn": "Matador Hi-School Ballpen",
+          "category": "stationery",
+          "stockQuantity": 75,
+          "unit": "পিস (Pcs)",
+          "unitBn": "পিস",
+          "purchasePrice": 4.2,
+          "sellingPrice": 6,
+          "lowStockThreshold": 20,
+          "lastRestocked": "2026-09-05T10:57:54.169Z"
+        },
+        {
+          "id": "inv-3",
+          "code": "STAMP-REV",
+          "nameBn": "রেভিনিউ স্ট্যাম্প (১০ টাকা)",
+          "nameEn": "Revenue Stamp Tk 10",
+          "category": "supplies",
+          "stockQuantity": 90,
+          "unit": "পাতা (Sheet)",
+          "unitBn": "পাতা",
+          "purchasePrice": 10,
+          "sellingPrice": 12,
+          "lowStockThreshold": 25,
+          "lastRestocked": "2026-09-05T10:57:54.169Z"
+        }
+      ],
+      "mfsAccounts": [
+        {
+          "id": "mfs-bkash",
+          "provider": "BKASH",
+          "accountName": "বিকাশ এজেন্ট (bKash Agent)",
+          "agentNumber": "০১৭১২-১১২২৩৩",
+          "balance": 15400,
+          "commissionEarnedToday": 62,
+          "cashInToday": 5000,
+          "cashOutToday": 10000,
+          "color": "#E2136E"
+        },
+        {
+          "id": "mfs-nagad",
+          "provider": "NAGAD",
+          "accountName": "নগদ এজেন্ট (Nagad Agent)",
+          "agentNumber": "০১৮১৯-৪৪৫৫৬৬",
+          "balance": 8900,
+          "commissionEarnedToday": 36,
+          "cashInToday": 3000,
+          "cashOutToday": 6000,
+          "color": "#F7941D"
+        },
+        {
+          "id": "mfs-rocket",
+          "provider": "ROCKET",
+          "accountName": "রকেট এজেন্ট (Rocket Agent)",
+          "agentNumber": "০১৯১১-৭৭৮৮৯৯",
+          "balance": 5200,
+          "commissionEarnedToday": 18,
+          "cashInToday": 1000,
+          "cashOutToday": 3000,
+          "color": "#8C3494"
+        }
+      ],
+      "auditLogs": [
+        {
+          "id": "log-1788605885679",
+          "action": "নতুন বিক্রি / আয়",
+          "details": "ভাউচার: ফটোকপি ৳50 (ক্যাশ নগদ)",
+          "timestamp": "2026-09-05T10:58:05.679Z",
+          "type": "transaction"
+        },
+        {
+          "id": "log-init",
+          "action": "সিস্টেম প্রস্তুত ও ডাটাবেজ সক্রিয়",
+          "details": "সরাসরি সার্ভার ডাটাবেজে ব্রাদার্স ডিজিটাল সেন্টার POS শুরু হয়েছে",
+          "timestamp": "2026-09-05T10:57:54.170Z",
+          "type": "system"
+        }
+      ]
+    }
+  }
+}

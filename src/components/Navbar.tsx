@@ -5,35 +5,35 @@ import {
   Smartphone,
   Package,
   FileText,
-  Code2,
   PlusCircle,
-  AlertTriangle,
-  Wallet,
-  TrendingUp,
   Settings,
   Search,
-  Cloud,
-  QrCode,
-  Lock,
+  Server,
+  Calculator,
+  Database,
+  CheckCircle2,
+  AlertTriangle,
   LogOut,
+  User,
 } from 'lucide-react';
-import { ShopSettings, SupabaseConfig } from '../types';
+import { ShopSettings, SupabaseConfig, UserSession } from '../types';
+import { formatTaka } from '../lib/calculations';
 
 interface NavbarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onOpenNewTransaction: () => void;
   onOpenSearch: () => void;
-  onOpenPairingModal: () => void;
-  onLockCounter: () => void;
+  onOpenCalculationAudit: () => void;
   cashInHand: number;
   todayNetProfit: number;
   lowStockCount: number;
   totalDue: number;
   settings: ShopSettings;
-  supabaseConfig: SupabaseConfig;
-  isAdminLoggedIn?: boolean;
-  onAdminLogout?: () => void;
+  supabaseConfig?: SupabaseConfig;
+  onOpenDatabaseModal: () => void;
+  currentUser?: UserSession | null;
+  onLogout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -41,16 +41,16 @@ export const Navbar: React.FC<NavbarProps> = ({
   setActiveTab,
   onOpenNewTransaction,
   onOpenSearch,
-  onOpenPairingModal,
-  onLockCounter,
+  onOpenCalculationAudit,
   cashInHand,
   todayNetProfit,
   lowStockCount,
   totalDue,
   settings,
   supabaseConfig,
-  isAdminLoggedIn,
-  onAdminLogout,
+  onOpenDatabaseModal,
+  currentUser,
+  onLogout,
 }) => {
   const navItems = [
     {
@@ -61,256 +61,262 @@ export const Navbar: React.FC<NavbarProps> = ({
     },
     {
       id: 'due-ledger',
-      labelBn: 'বকেয়া খাতা',
+      labelBn: 'বাকি খাতা',
       labelEn: 'Due Ledger',
       icon: BookOpen,
-      badge: totalDue > 0 ? `৳${totalDue.toLocaleString()}` : undefined,
-      badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
+      badge: totalDue > 0 ? formatTaka(totalDue) : undefined,
+      badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
     },
     {
       id: 'mfs-ledger',
-      labelBn: 'মোবাইল ব্যাংকিং',
+      labelBn: 'এমএফএস ব্যাংকিং',
       labelEn: 'MFS Banking',
       icon: Smartphone,
     },
     {
       id: 'inventory',
-      labelBn: 'স্টক ও ইনভেন্টরি',
-      labelEn: 'Stock Control',
+      labelBn: 'স্টক ও মালামাল',
+      labelEn: 'Inventory',
       icon: Package,
       badge: lowStockCount > 0 ? `${lowStockCount} টি কম` : undefined,
       badgeColor: 'bg-rose-100 text-rose-700 border-rose-200 animate-pulse',
     },
     {
       id: 'reports',
-      labelBn: 'রিপোর্ট ও রসিদ',
-      labelEn: 'Reports & Memo',
+      labelBn: 'রিপোর্ট ও ক্যাশশিট',
+      labelEn: 'Reports',
       icon: FileText,
     },
     {
       id: 'admin',
-      labelBn: 'অ্যাডমিন প্যানেল',
-      labelEn: 'Admin Panel',
+      labelBn: 'শপ সেটিংস ও ডাটাবেজ',
+      labelEn: 'Shop & DB',
       icon: Settings,
-      badge: isAdminLoggedIn
-        ? 'লগড-ইন'
-        : supabaseConfig.isConnected
-        ? 'Cloud'
-        : undefined,
-      badgeColor: isAdminLoggedIn
-        ? 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold'
-        : 'bg-indigo-100 text-indigo-700 border-indigo-200',
-    },
-    {
-      id: 'architecture',
-      labelBn: 'সিস্টেম ডক্স ও গাইড',
-      labelEn: 'System Docs',
-      icon: Code2,
     },
   ];
 
+  const isConnected = Boolean(supabaseConfig?.isConnected && supabaseConfig?.url);
+
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs no-print">
-      {/* Top Banner with Quick Metrics & Cloud Sync Indicator */}
+      {/* Top Banner with Database Live Status, Math Metrics & Logout Button */}
       <div className="bg-slate-900 text-slate-100 text-xs px-4 py-1.5 border-b border-slate-800">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+          {/* Shop & Database Indicator */}
           <div className="flex items-center gap-2">
-            <span
-              className={`inline-block w-2 h-2 rounded-full ${
-                supabaseConfig.isConnected ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'
+            <button
+              type="button"
+              onClick={onOpenDatabaseModal}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md font-semibold text-[11px] transition cursor-pointer ${
+                isConnected
+                  ? 'bg-emerald-950/90 border border-emerald-600 text-emerald-300 hover:bg-emerald-900'
+                  : 'bg-amber-950/90 border border-amber-500 text-amber-300 hover:bg-amber-900 animate-pulse'
               }`}
-            />
-            <span className="font-bold text-emerald-300">{settings.shopName}</span>
-            <span className="text-slate-400 hidden sm:inline">
-              | {settings.shopSubtitle}
-            </span>
+              title="Supabase ডাটাবেজ কনফিগারেশন পরিবর্তন করতে ক্লিক করুন"
+            >
+              {isConnected ? (
+                <>
+                  <Database className="w-3 h-3 text-emerald-400" />
+                  <span>Supabase ডাটাবেজ লাইভ</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="w-3 h-3 text-amber-400" />
+                  <span>ডাটাবেজ কানেক্ট করুন (URL & Key)</span>
+                </>
+              )}
+            </button>
+            <span className="font-bold text-white hidden sm:inline">{settings.shopName}</span>
           </div>
 
-          <div className="flex items-center gap-2.5 text-[11px] font-medium flex-wrap">
-            {/* Mobile QR Pairing Trigger */}
+          {/* Quick Cash & Profit Figures + User Session & Logout */}
+          <div className="flex items-center gap-2 text-[11px] font-medium flex-wrap">
+            {/* Calculation Audit Button */}
             <button
-              onClick={onOpenPairingModal}
-              className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-indigo-900/70 border border-indigo-700 text-indigo-200 hover:bg-indigo-800 transition"
-              title="পিসি ও মোবাইল কিউআর কোড দিয়ে যুক্ত করুন"
+              type="button"
+              onClick={onOpenCalculationAudit}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-800/80 hover:bg-emerald-700 border border-emerald-600 text-white font-semibold transition cursor-pointer"
+              title="সমস্ত হিসাবের গাণিতিক ফর্মুলা ও যাচাইকরণ দেখুন"
             >
-              <QrCode className="w-3.5 h-3.5 text-indigo-300" />
-              <span>মোবাইল পেয়ার (QR)</span>
+              <Calculator className="w-3.5 h-3.5 text-emerald-300" />
+              <span>হিসাব অডিট</span>
             </button>
 
-            {/* Cloud sync status pill */}
-            <button
-              onClick={() => setActiveTab('admin')}
-              className={`flex items-center gap-1.5 px-2 py-0.5 rounded-lg border transition ${
-                supabaseConfig.isConnected
-                  ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700 hover:bg-emerald-900'
-                  : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
-              }`}
-              title="ক্লাউড সংযোগ ও সিঙ্ক সেটিংস দেখতে ক্লিক করুন"
+            {/* Cash in Hand Pill */}
+            <div
+              onClick={onOpenCalculationAudit}
+              className="flex items-center gap-1 bg-slate-800/90 px-2.5 py-1 rounded-lg border border-slate-700 text-slate-300 cursor-pointer hover:border-slate-500 transition"
+              title="হাতে নগদ ব্যালেন্স"
             >
-              <Cloud className="w-3 h-3 text-emerald-400" />
-              <span>{supabaseConfig.isConnected ? 'ক্লাউড সিঙ্ক চালু' : 'লোকাল মেমোরি'}</span>
-            </button>
-
-            <div className="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-0.5 rounded-lg border border-slate-700">
-              <Wallet className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-slate-400">ক্যাশ:</span>
-              <span className="text-amber-300 font-bold">৳ {cashInHand.toLocaleString()}</span>
-            </div>
-            <div className="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-0.5 rounded-lg border border-slate-700">
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-slate-400">লাভ:</span>
-              <span className="text-emerald-300 font-bold">৳ {todayNetProfit.toLocaleString()}</span>
+              <span className="text-slate-400">হাতে নগদ:</span>
+              <span className="text-amber-300 font-bold">{formatTaka(cashInHand)}</span>
             </div>
 
-            {/* Lock Screen Trigger */}
-            <button
-              onClick={onLockCounter}
-              className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
-              title="কাউন্টার লক করুন (PIN সিকিউরিটি)"
+            {/* Profit Pill */}
+            <div
+              onClick={onOpenCalculationAudit}
+              className="flex items-center gap-1 bg-slate-800/90 px-2.5 py-1 rounded-lg border border-slate-700 text-slate-300 cursor-pointer hover:border-slate-500 transition"
+              title="আজকের মোট নিট লাভ"
             >
-              <Lock className="w-3 h-3 text-amber-400" />
-              <span className="hidden sm:inline">লক</span>
-            </button>
+              <span className="text-slate-400">নিট লাভ:</span>
+              <span className="text-emerald-300 font-bold">{formatTaka(todayNetProfit)}</span>
+            </div>
 
-            {/* Admin Login / Logout button */}
-            {!isAdminLoggedIn ? (
+            {/* User Profile Info Pill */}
+            <div className="hidden lg:flex items-center gap-1.5 bg-slate-800/90 px-2.5 py-1 rounded-lg border border-slate-700 text-slate-300">
+              <User className="w-3 h-3 text-emerald-400" />
+              <span className="font-semibold text-white">
+                {currentUser?.name || settings.ownerName || 'শাহরিয়ার ইমন'}
+              </span>
+            </div>
+
+            {/* PROMINENT LOGOUT BUTTON */}
+            {onLogout && (
               <button
-                onClick={() => setActiveTab('admin')}
-                className="flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 border border-indigo-700 transition font-bold"
-                title="অ্যাডমিন লগইন পেজে যান"
+                type="button"
+                onClick={onLogout}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-bold text-xs transition cursor-pointer shadow-md shadow-rose-950/40 border border-rose-500"
+                title="অ্যাপ থেকে লগআউট করতে এখানে ক্লিক করুন"
               >
-                <Lock className="w-3 h-3 text-indigo-400" />
-                <span>অ্যাডমিন লগইন</span>
+                <LogOut className="w-3.5 h-3.5 text-white" />
+                <span>লগআউট (Logout)</span>
               </button>
-            ) : (
-              onAdminLogout && (
-                <button
-                  onClick={onAdminLogout}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 transition"
-                  title="অ্যাডমিন থেকে লগআউট করুন"
-                >
-                  <LogOut className="w-3 h-3 text-rose-400" />
-                  <span className="hidden sm:inline">অ্যাডমিন লগআউট</span>
-                </button>
-              )
             )}
           </div>
         </div>
       </div>
 
-      {/* Main Navigation Bar */}
+      {/* Main Bar */}
       <div className="max-w-7xl mx-auto px-4 py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        {/* Brand Logo & Name */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-linear-to-tr from-emerald-700 via-emerald-600 to-teal-500 text-white flex items-center justify-center font-black text-lg shadow-sm border border-emerald-500/30">
-              BDC
-            </div>
+            {settings.shopLogo ? (
+              <img
+                src={settings.shopLogo}
+                alt={settings.shopName}
+                className="w-10 h-10 rounded-2xl object-cover shadow-sm border border-slate-200 shrink-0"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-700 via-emerald-600 to-teal-500 text-white flex items-center justify-center font-black text-sm shadow-sm border border-emerald-500/30 shrink-0">
+                {settings.shopName ? settings.shopName.slice(0, 3) : 'POS'}
+              </div>
+            )}
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-none">
                   {settings.shopName}
                 </h1>
                 <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300">
-                  POS v2.5
-                </span>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 hidden sm:inline">
-                  {settings.shopKey || 'brothers-digital'}
+                  Supabase POS
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                {settings.shopSubtitle} • Point of Sale & Digital Services
+                {settings.shopSubtitle || 'ডিজিটাল সেন্টার ও শপ ম্যানেজমেন্ট'}
               </p>
             </div>
           </div>
 
+          {/* Mobile Fast Action Buttons */}
           <div className="md:hidden flex items-center gap-1.5">
             <button
-              onClick={onOpenPairingModal}
-              className="p-2 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200"
-              title="মোবাইল কিউআর"
+              type="button"
+              onClick={onOpenCalculationAudit}
+              className="p-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200"
+              title="হিসাব অডিট"
             >
-              <QrCode className="w-4 h-4" />
+              <Calculator className="w-4 h-4" />
             </button>
             <button
+              type="button"
               onClick={onOpenSearch}
               className="p-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200"
-              title="খুঁজুন (Search)"
+              title="খুঁজুন"
             >
               <Search className="w-4 h-4" />
             </button>
             <button
+              type="button"
               onClick={onOpenNewTransaction}
-              id="mobile-quick-add-btn"
-              className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white px-3 py-2 rounded-xl text-xs font-bold shadow-xs transition"
+              className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-xs font-bold shadow-xs cursor-pointer"
             >
               <PlusCircle className="w-4 h-4" />
-              <span>এন্ট্রি</span>
+              <span>ভাউচার</span>
             </button>
+            {onLogout && (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="p-2 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition cursor-pointer"
+                title="লগআউট (Logout)"
+              >
+                <LogOut className="w-4 h-4 text-rose-600" />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Search Bar & Action Buttons on Desktop */}
+        {/* Desktop Quick Actions */}
         <div className="hidden md:flex items-center gap-2.5">
-          {/* Mobile QR Pair Desktop Button */}
           <button
-            onClick={onOpenPairingModal}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 text-xs font-bold transition"
-            title="মোবাইল ক্যামেরা দিয়ে স্ক্যান করুন"
-          >
-            <QrCode className="w-4 h-4 text-indigo-600" />
-            <span>মোবাইল পেয়ার</span>
-          </button>
-
-          {/* Quick Search Spotlight Trigger */}
-          <button
+            type="button"
             onClick={onOpenSearch}
-            className="flex items-center gap-3 px-3.5 py-2 rounded-2xl bg-slate-100 hover:bg-slate-200/80 text-slate-500 border border-slate-200 transition text-xs group w-56 justify-between"
+            className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-medium transition cursor-pointer"
           >
-            <div className="flex items-center gap-2">
-              <Search className="w-4 h-4 text-slate-400 group-hover:text-emerald-600" />
-              <span className="text-slate-600 font-medium">তথ্য খুঁজুন...</span>
-            </div>
-            <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-bold bg-white text-slate-500 rounded border border-slate-200 shadow-2xs">
-              Ctrl+K
+            <Search className="w-3.5 h-3.5" />
+            <span>খুঁজুন (ভাউচার, খদ্দের, পণ্য)</span>
+            <kbd className="text-[10px] bg-white px-1.5 py-0.5 rounded border border-slate-300 text-slate-500">
+              /
             </kbd>
           </button>
 
           <button
+            type="button"
             onClick={onOpenNewTransaction}
-            id="desktop-quick-add-btn"
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white px-4 py-2 rounded-2xl text-xs font-bold shadow-xs hover:shadow transition transform active:scale-95"
+            className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 transition cursor-pointer"
           >
             <PlusCircle className="w-4 h-4" />
-            <span>নতুন লেনদেন এন্ট্রি</span>
+            <span>নতুন ভাউচার / লেনদেন</span>
           </button>
+
+          {/* Desktop Secondary Logout Button */}
+          {onLogout && (
+            <button
+              type="button"
+              onClick={onLogout}
+              className="flex items-center gap-1.5 px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition cursor-pointer"
+              title="সেশন শেষ করে লগআউট করুন"
+            >
+              <LogOut className="w-3.5 h-3.5 text-rose-600" />
+              <span>লগআউট</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Tabs Navigation */}
-      <div className="max-w-7xl mx-auto px-4 border-t border-slate-100">
-        <nav className="flex space-x-1 overflow-x-auto py-1.5 scrollbar-none" aria-label="Tabs">
+      {/* Tabs Navigation Bar */}
+      <div className="bg-slate-50 border-t border-slate-200 px-4">
+        <div className="max-w-7xl mx-auto flex items-center space-x-1 overflow-x-auto py-1 scrollbar-none">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
               <button
                 key={item.id}
-                id={`tab-${item.id}`}
+                type="button"
                 onClick={() => setActiveTab(item.id)}
-                className={`flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-2xl whitespace-nowrap transition relative ${
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition cursor-pointer ${
                   isActive
-                    ? 'bg-emerald-50 text-emerald-900 font-bold border border-emerald-200 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+                    ? 'bg-white text-emerald-800 shadow-xs border border-slate-200/80 font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-700' : 'text-slate-500'}`} />
+                <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-600' : 'text-slate-400'}`} />
                 <span>{item.labelBn}</span>
-                <span className="text-[11px] text-slate-400 font-normal hidden xl:inline">
-                  ({item.labelEn})
-                </span>
                 {item.badge && (
                   <span
-                    className={`ml-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${item.badgeColor}`}
+                    className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full border ${item.badgeColor}`}
                   >
                     {item.badge}
                   </span>
@@ -318,7 +324,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             );
           })}
-        </nav>
+        </div>
       </div>
     </header>
   );

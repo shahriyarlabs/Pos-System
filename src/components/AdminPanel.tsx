@@ -42,12 +42,16 @@ import {
 } from '../types';
 import {
   SUPABASE_SETUP_SQL,
+  SUPABASE_CLEANUP_SQL,
+  SUPABASE_CLEANUP_EXCEPT_CASH_SQL,
+  SUPABASE_DELETE_SHOP_SQL,
   testSupabaseConnection,
   pushAllToSupabase,
   pullAllFromSupabase,
   getSupabaseClient,
+  deleteAllFromSupabase,
+  updateSupabaseSettings,
 } from '../lib/supabase';
-import { STARTER_INVENTORY_TEMPLATES } from '../data/mockData';
 
 interface AdminPanelProps {
   settings: ShopSettings;
@@ -66,10 +70,7 @@ interface AdminPanelProps {
     mfsAccounts: MFSAccount[];
     settings?: ShopSettings;
   }) => void;
-  onResetToDemoData: () => void;
   onClearAllData: () => void;
-  onAddStarterTemplates: () => void;
-  onOpenPairingModal: () => void;
   onDataSyncedFromCloud: (cloudData: {
     transactions: Transaction[];
     customers: Customer[];
@@ -90,10 +91,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   mfsAccounts,
   auditLogs,
   onRestoreAllData,
-  onResetToDemoData,
   onClearAllData,
-  onAddStarterTemplates,
-  onOpenPairingModal,
   onDataSyncedFromCloud,
   onLogout,
 }) => {
@@ -108,6 +106,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [copiedSql, setCopiedSql] = useState(false);
+  const [copiedCleanupSql, setCopiedCleanupSql] = useState(false);
+  const [isCleaningUpCloud, setIsCleaningUpCloud] = useState(false);
+  const [cleanupMode, setCleanupMode] = useState<'except_cash' | 'truncate' | 'shop'>('except_cash');
 
   // Shop Profile state
   const [profileForm, setProfileForm] = useState<ShopSettings>({ ...settings });
@@ -212,11 +213,80 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setTimeout(() => setCopiedSql(false), 3000);
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleCopyCleanupSql = () => {
+    let code = SUPABASE_CLEANUP_EXCEPT_CASH_SQL;
+    if (cleanupMode === 'truncate') {
+      code = SUPABASE_CLEANUP_SQL;
+    } else if (cleanupMode === 'shop') {
+      code = SUPABASE_DELETE_SHOP_SQL(settings.shopKey || 'brothers-digital');
+    }
+    navigator.clipboard.writeText(code);
+    setCopiedCleanupSql(true);
+    setTimeout(() => setCopiedCleanupSql(false), 3000);
+  };
+
+  const handleWipeSupabaseFromApp = async () => {
+    const client = getSupabaseClient(supabaseUrl, supabaseAnonKey);
+    if (!client) {
+      alert('Supabase ক্লায়েন্ট সংযুক্ত নয়! প্রথমে প্রজেক্ট URL এবং Anon Key চেক করুন।');
+      return;
+    }
+
+    const shopKey = settings.shopKey || 'brothers-digital';
+    const warningMsg =
+      cleanupMode === 'except_cash'
+        ? `⚠️ আপনি কি ক্যাশ ইন হ্যান্ড (হাতে নগদ উদ্বৃত্ত) ও সেটিংস অক্ষত রেখে লেনদেন, কাস্টমার ও স্টক ক্লাউড থেকে মুছে ফেলতে চান?`
+        : cleanupMode === 'shop'
+        ? `⚠️ আপনি কি দোকান "${shopKey}" এর সমস্ত লেনদেন, কাস্টমার, স্টক ও হিসাব Supabase ক্লাউড থেকে মুছে ফেলতে চান?`
+        : `⚠️ আপনি কি Supabase ক্লাউড ডেটাবেজের সমস্ত টেবিল (Transactions, Customers, Inventory, MFS, Settings) সম্পূর্ণরূপে খালি করতে চান?`;
+
+    const confirmPrompt = window.prompt(
+      `${warningMsg}\n\nএই প্রক্রিয়াটি অপরিবর্তনীয়! নিশ্চিত হলে নিচে হুবহু "DELETE" শব্দটি লিখে OK চাপুন:`
+    );
+
+    if (confirmPrompt !== 'DELETE') {
+      if (confirmPrompt !== null) {
+        alert('সঠিক কোড না লেখায় ডেটা মোছা বাতিল করা হয়েছে।');
+      }
+      return;
+    }
+
+    setIsCleaningUpCloud(true);
+    try {
+      const res = await deleteAllFromSupabase(
+        client,
+        cleanupMode === 'shop' ? shopKey : undefined,
+        cleanupMode === 'except_cash'
+      );
+      if (res.success) {
+        alert(res.message);
+      } else {
+        alert(`ত্রুটি: ${res.message}`);
+      }
+    } catch (e: any) {
+      alert(`ব্যর্থ হয়েছে: ${e.message}`);
+    } finally {
+      setIsCleaningUpCloud(false);
+    }
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     onUpdateSettings(profileForm);
     setProfileSaveSuccess(true);
     setTimeout(() => setProfileSaveSuccess(false), 3000);
+
+    // Sync to Supabase if connected
+    if (supabaseConfig.isConnected && supabaseUrl && supabaseAnonKey) {
+      try {
+        const client = getSupabaseClient(supabaseUrl, supabaseAnonKey);
+        if (client) {
+          await updateSupabaseSettings(client, profileForm, settings.shopKey || 'brothers-digital');
+        }
+      } catch (err) {
+        console.error('Failed to sync updated profile to Supabase', err);
+      }
+    }
   };
 
   // Export JSON Backup
@@ -300,13 +370,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
         {/* Sync Status Badge & Quick Actions */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={onOpenPairingModal}
-            className="px-3 py-1.5 rounded-2xl text-xs font-bold bg-indigo-50 text-indigo-800 border border-indigo-200 hover:bg-indigo-100 transition flex items-center gap-1.5"
-          >
-            <QrCode className="w-4 h-4 text-indigo-600" />
-            <span>মোবাইল পেয়ারিং QR</span>
-          </button>
+          <div className="px-3 py-1.5 rounded-2xl text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1.5">
+            <User className="w-3.5 h-3.5 text-slate-500" />
+            <span>শপ আইডি: <strong className="text-emerald-700 font-mono">{settings.shopKey || 'brothers-digital'}</strong></span>
+          </div>
 
           <div
             className={`px-3 py-1.5 rounded-2xl text-xs font-bold flex items-center gap-2 border ${
@@ -414,21 +481,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div className="p-2 rounded-xl bg-white/10 text-emerald-400">
                     <Smartphone className="w-5 h-5" />
                   </div>
-                  <h2 className="text-lg font-bold">পিসি ও অ্যান্ড্রয়েড মোবাইলে একযোগে রিয়েল-টাইম ব্যবহার</h2>
+                  <h2 className="text-lg font-bold">যেকোনো ডিভাইস (মোবাইল ও পিসি) থেকে সরাসরি লগইন</h2>
                 </div>
                 <p className="text-xs text-indigo-100 leading-relaxed max-w-2xl">
-                  একই সাথে আপনার দোকানের কাউন্টার পিসি এবং অ্যান্ড্রয়েড মোবাইল থেকে একই একাউন্টে রিয়েল-টাইমে
-                  লেনদেন, বকেয়া এবং স্টক পরিচালনা করতে Supabase ফ্রি ডেটাবেজ ব্যবহার করা হচ্ছে।
-                  মোবাইল থেকে কোনো এন্ট্রি করলে ১ সেকেন্ডের মধ্যে পিসিতে দেখাবে, আবার পিসির এন্ট্রি মোবাইলে দেখাবে।
+                  আপনার যেকোনো মোবাইল, ট্যাবলেট বা কম্পিউটার ব্রাউজারে এই সাইটটি ওপেন করে আপনার <b>শপ আইডি</b> ({settings.shopKey || 'brothers-digital'}) এবং <b>পিন কোড</b> দিয়ে সরাসরি প্রবেশ করুন। কোনো পেয়ারিং কোডের প্রয়োজন নেই—একই সাথে সকল ডিভাইসে লাইভ ডেটা সিঙ্ক হবে।
                 </p>
-                <div className="pt-2 flex items-center gap-3">
-                  <button
-                    onClick={onOpenPairingModal}
-                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1.5"
-                  >
-                    <QrCode className="w-4 h-4" />
-                    <span>মোবাইল কিউআর কোড দেখুন</span>
-                  </button>
+                <div className="pt-1 flex items-center gap-2 text-xs">
+                  <span className="px-3 py-1.5 bg-white/10 rounded-xl font-mono text-emerald-300">
+                    লগইন শপ আইডি: <b>{settings.shopKey || 'brothers-digital'}</b>
+                  </span>
+                  <span className="px-3 py-1.5 bg-white/10 rounded-xl text-indigo-200">
+                    মাস্টার পিন: <b>••••</b>
+                  </span>
                 </div>
               </div>
               <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-xs border border-white/10 text-xs shrink-0">
@@ -611,6 +675,130 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <p>✓ মাল্টি-ডিভাইস রিয়েল-টাইম পাবলিকেশন অন্তর্ভুক্ত।</p>
               </div>
             </div>
+
+            {/* 3. Database Data Cleanup Card */}
+            <div className="lg:col-span-3 bg-rose-50/50 border border-rose-200 rounded-3xl p-6 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-rose-100 pb-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                    <Trash2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-rose-950">
+                        ৩. Supabase ডেটাবেজ ডাটা ক্লিনআপ (Delete All Data from Supabase)
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 text-[10px] font-extrabold uppercase">
+                        Danger Zone
+                      </span>
+                    </div>
+                    <p className="text-xs text-rose-700 mt-0.5">
+                      Supabase ক্লাউড থেকে সব ডেটা সম্পূর্ণ মুছে ফেলার জন্য নিচের SQL কোডটি ব্যবহার করুন অথবা সরাসরি অ্যাপ থেকে ক্লিন করুন।
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={handleCopyCleanupSql}
+                    className="px-3.5 py-2 rounded-xl bg-white border border-rose-300 hover:bg-rose-100/50 text-rose-800 text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                  >
+                    {copiedCleanupSql ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>SQL কপি হয়েছে!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>ক্লিনআপ SQL কপি করুন</span>
+                      </>
+                    )}
+                  </button>
+                  {supabaseConfig.isConnected && (
+                    <button
+                      type="button"
+                      onClick={handleWipeSupabaseFromApp}
+                      disabled={isCleaningUpCloud}
+                      className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+                    >
+                      <Trash2 className={`w-3.5 h-3.5 ${isCleaningUpCloud ? 'animate-spin' : ''}`} />
+                      <span>{isCleaningUpCloud ? 'মুছে ফেলা হচ্ছে...' : 'অ্যাপ থেকে ক্লাউড ওয়াইপ করুন'}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Mode Selection */}
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <span className="text-xs font-bold text-slate-700">ক্লিনআপ মোড:</span>
+                <div className="bg-white p-1 rounded-xl border border-rose-200 flex flex-wrap text-xs gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setCleanupMode('except_cash')}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${
+                      cleanupMode === 'except_cash'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <span>🛡️ ক্যাশ ইন হ্যান্ড বাদে মুছুন</span>
+                    <span className="text-[10px] opacity-80">(সুরক্ষিত)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCleanupMode('truncate')}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                      cleanupMode === 'truncate'
+                        ? 'bg-rose-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    সকল টেবিল সম্পূর্ণ খালি (TRUNCATE ALL)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCleanupMode('shop')}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                      cleanupMode === 'shop'
+                        ? 'bg-rose-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    নির্দিষ্ট শপের ডেটা মুছুন ({settings.shopKey || 'brothers-digital'})
+                  </button>
+                </div>
+              </div>
+
+              {/* Code viewer */}
+              <div className="bg-slate-950 text-slate-200 p-4 rounded-2xl text-[11px] font-mono overflow-x-auto border border-slate-800">
+                <pre>
+                  {cleanupMode === 'except_cash'
+                    ? SUPABASE_CLEANUP_EXCEPT_CASH_SQL
+                    : cleanupMode === 'truncate'
+                    ? SUPABASE_CLEANUP_SQL
+                    : SUPABASE_DELETE_SHOP_SQL(settings.shopKey || 'brothers-digital')}
+                </pre>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-rose-800/90 pt-1">
+                <div className="bg-white/80 p-3 rounded-xl border border-rose-200">
+                  <p className="font-bold text-slate-900 mb-1">পদ্ধতি ১: Supabase SQL Editor এ চালানো (প্রস্তাবিত)</p>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    ১. উপরে <b>"ক্লিনআপ SQL কপি করুন"</b> বাটনে চাপুন।<br />
+                    ২. Supabase ড্যাশবোর্ডে গিয়ে <b>SQL Editor &gt; New query</b> খুলুন।<br />
+                    ৩. কোডটি পেস্ট করে <b>RUN</b> চাপুন। কয়েক মিলিসেকেন্ডেই টেবিল সম্পূর্ণ ক্লিন হয়ে যাবে।
+                  </p>
+                </div>
+                <div className="bg-white/80 p-3 rounded-xl border border-rose-200">
+                  <p className="font-bold text-slate-900 mb-1">পদ্ধতি ২: সরাসরি এই অ্যাপ থেকে মোছা</p>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    আপনার Supabase সংযোগ সক্রিয় থাকলে সরাসরি <b>"অ্যাপ থেকে ক্লাউড ওয়াইপ করুন"</b> বাটনে চাপ দিন। নিরাপত্তার স্বার্থে কনফার্মেশন কোড "DELETE" টাইপ করলেই ক্লাউডের ডেটা মুছে যাবে।
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -630,6 +818,79 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <Check className="w-3.5 h-3.5" /> সফলভাবে সেভ হয়েছে!
               </div>
             )}
+          </div>
+
+          {/* Shop Logo Customization */}
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <Building className="w-4 h-4 text-emerald-600" />
+                <span>দোকানের লোগো (Shop Logo)</span>
+              </label>
+              {profileForm.shopLogo && (
+                <button
+                  type="button"
+                  onClick={() => setProfileForm({ ...profileForm, shopLogo: undefined })}
+                  className="text-xs text-rose-600 hover:underline font-semibold cursor-pointer"
+                >
+                  লোগো মুছুন
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-white border border-slate-300 shadow-xs flex items-center justify-center overflow-hidden shrink-0">
+                {profileForm.shopLogo ? (
+                  <img
+                    src={profileForm.shopLogo}
+                    alt="Logo"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Building className="w-8 h-8 text-slate-400" />
+                )}
+              </div>
+              <div className="space-y-1.5 flex-1">
+                <input
+                  type="file"
+                  id="admin-logo-upload"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        setProfileForm({
+                          ...profileForm,
+                          shopLogo: ev.target?.result as string,
+                        });
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="hidden"
+                />
+                <div className="flex items-center gap-2">
+                  <label
+                    htmlFor="admin-logo-upload"
+                    className="px-3.5 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 rounded-xl text-xs font-bold text-slate-700 cursor-pointer shadow-xs transition flex items-center gap-1.5"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>নতুন লোগো আপলোড</span>
+                  </label>
+                  <span className="text-[11px] text-slate-500">অথবা অনলাইন ইমেজ লিংক দিন:</span>
+                </div>
+                <input
+                  type="url"
+                  placeholder="https://example.com/logo.png"
+                  value={profileForm.shopLogo || ''}
+                  onChange={(e) =>
+                    setProfileForm({ ...profileForm, shopLogo: e.target.value || undefined })
+                  }
+                  className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-indigo-500"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -771,18 +1032,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>সব ডেটা মুছে ফ্রেশ করুন</span>
               </button>
-
-              <button
-                onClick={() => {
-                  if (confirm('৭টি প্রস্তুত স্টেশনারি ও পেপার আইটেম ইনভেন্টরিতে যুক্ত করতে চান?')) {
-                    onAddStarterTemplates();
-                  }
-                }}
-                className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition flex items-center gap-2 shadow-xs"
-              >
-                <PackagePlus className="w-3.5 h-3.5" />
-                <span>স্টেশনারি আইটেম টেমপ্লেট যোগ করুন</span>
-              </button>
             </div>
           </div>
 
@@ -839,21 +1088,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <span className="text-[10px] text-slate-400 mt-0.5">ফাইল নির্বাচন করলেই স্বয়ংক্রিয়ভাবে রিস্টোর হবে</span>
                 <input type="file" accept=".json" onChange={handleImportBackup} className="hidden" />
               </label>
-
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-xs text-slate-500">টেস্ট ডেমো ডেটা ফিরিয়ে আনতে চান?</span>
-                <button
-                  onClick={() => {
-                    if (confirm('আপনি কি টেস্ট নমুনা ডেটা রিস্টোর করতে চান?')) {
-                      onResetToDemoData();
-                    }
-                  }}
-                  className="px-3 py-1.5 rounded-xl border border-slate-200 text-indigo-600 hover:bg-indigo-50 text-xs font-bold transition flex items-center gap-1"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>লোড ডেমো ডেটা</span>
-                </button>
-              </div>
             </div>
           </div>
         </div>

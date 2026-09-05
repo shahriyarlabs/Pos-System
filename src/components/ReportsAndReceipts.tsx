@@ -48,6 +48,13 @@ const VoucherContent: React.FC<{
   >
     {/* Header */}
     <div className="text-center border-b-2 border-slate-900 pb-1.5 shrink-0">
+      {settings.shopLogo && (
+        <img
+          src={settings.shopLogo}
+          alt={settings.shopName}
+          className="w-7 h-7 mx-auto mb-1 object-contain rounded"
+        />
+      )}
       <div className="font-black leading-tight" style={{ fontSize: '12px' }}>
         {settings.shopName}
       </div>
