@@ -30,6 +30,41 @@ interface TransactionModalProps {
   ) => void;
 }
 
+// Predefined service categories for Brothers Digital Center
+const incomeServices: {
+  id: ServiceCategory;
+  nameBn: string;
+  nameEn: string;
+  icon: React.ElementType;
+  defaultPrice?: number;
+}[] = [
+  { id: 'photocopy', nameBn: 'ফটোকপি / ফটোরূপ', nameEn: 'Photocopy (Xerox)', icon: Copy, defaultPrice: 50 },
+  { id: 'print_bw', nameBn: 'কম্পিউটার প্রিন্ট (B&W)', nameEn: 'B&W Printout', icon: Printer, defaultPrice: 60 },
+  { id: 'print_color', nameBn: 'কালার ফটো ও ডকুমেন্ট প্রিন্ট', nameEn: 'Color Print / Studio', icon: Printer, defaultPrice: 120 },
+  { id: 'online_form', nameBn: 'পাসপোর্ট / এনআইডি / আবেদন', nameEn: 'Online Form / Govt Application', icon: FileText, defaultPrice: 350 },
+  { id: 'photo_studio', nameBn: 'স্টুডিও ছবি তোলা ও ল্যাব', nameEn: 'Studio Portrait & Stamp', icon: Camera, defaultPrice: 200 },
+  { id: 'laminating', nameBn: 'লেমিনেশন সার্ভিস', nameEn: 'Lamination', icon: Layers, defaultPrice: 60 },
+  { id: 'mfs_fee', nameBn: 'বিকাশ / নগদ এজেন্ট ফি', nameEn: 'MFS Commission / Cash-out Fee', icon: Smartphone, defaultPrice: 40 },
+  { id: 'product_sale', nameBn: 'স্টেশনারি পণ্য বিক্রি', nameEn: 'Stationery & Accessories', icon: ShoppingBag },
+  { id: 'other_income', nameBn: 'অন্যান্য ডিজিটাল আয়', nameEn: 'Other Income', icon: PlusCircle },
+];
+
+// Predefined expense categories
+const expenseCategories: {
+  id: ExpenseCategory;
+  nameBn: string;
+  nameEn: string;
+  icon: React.ElementType;
+}[] = [
+  { id: 'supplies', nameBn: 'কাগজ, কালি ও মালামাল ক্রয়', nameEn: 'Paper & Toner Refills', icon: ShoppingBag },
+  { id: 'shop_rent', nameBn: 'দোকান ভাড়া', nameEn: 'Shop Rent', icon: Home },
+  { id: 'electricity_bill', nameBn: 'বিদ্যুৎ বিল', nameEn: 'Electricity Bill', icon: Zap },
+  { id: 'internet_bill', nameBn: 'ইন্টারনেট বিল (WiFi)', nameEn: 'Internet Bill', icon: Wifi },
+  { id: 'tea_snacks', nameBn: 'নাস্তা ও আপ্যায়ন', nameEn: 'Tea & Snacks', icon: Coffee },
+  { id: 'maintenance', nameBn: 'মেশিন ও প্রিন্টার মেরামত', nameEn: 'Printer Repair & Service', icon: Wrench },
+  { id: 'other_expense', nameBn: 'অন্যান্য দোকান খরচ', nameEn: 'Other Shop Expense', icon: PlusCircle },
+];
+
 export const TransactionModal: React.FC<TransactionModalProps> = ({
   isOpen,
   onClose,
@@ -50,41 +85,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [selectedInventoryId, setSelectedInventoryId] = useState<string>('');
   const [inventoryQty, setInventoryQty] = useState<number>(1);
   const [autoPrintReceipt, setAutoPrintReceipt] = useState<boolean>(false);
-
-  // Predefined service categories for Brothers Digital Center
-  const incomeServices: {
-    id: ServiceCategory;
-    nameBn: string;
-    nameEn: string;
-    icon: React.ElementType;
-    defaultPrice?: number;
-  }[] = [
-    { id: 'photocopy', nameBn: 'ফটোকপি / ফটোরূপ', nameEn: 'Photocopy (Xerox)', icon: Copy, defaultPrice: 50 },
-    { id: 'print_bw', nameBn: 'কম্পিউটার প্রিন্ট (B&W)', nameEn: 'B&W Printout', icon: Printer, defaultPrice: 60 },
-    { id: 'print_color', nameBn: 'কালার ফটো ও ডকুমেন্ট প্রিন্ট', nameEn: 'Color Print / Studio', icon: Printer, defaultPrice: 120 },
-    { id: 'online_form', nameBn: 'পাসপোর্ট / এনআইডি / আবেদন', nameEn: 'Online Form / Govt Application', icon: FileText, defaultPrice: 350 },
-    { id: 'photo_studio', nameBn: 'স্টুডিও ছবি তোলা ও ল্যাব', nameEn: 'Studio Portrait & Stamp', icon: Camera, defaultPrice: 200 },
-    { id: 'laminating', nameBn: 'লেমিনেশন সার্ভিস', nameEn: 'Lamination', icon: Layers, defaultPrice: 60 },
-    { id: 'mfs_fee', nameBn: 'বিকাশ / নগদ এজেন্ট ফি', nameEn: 'MFS Commission / Cash-out Fee', icon: Smartphone, defaultPrice: 40 },
-    { id: 'product_sale', nameBn: 'স্টেশনারি পণ্য বিক্রি', nameEn: 'Stationery & Accessories', icon: ShoppingBag },
-    { id: 'other_income', nameBn: 'অন্যান্য ডিজিটাল আয়', nameEn: 'Other Income', icon: PlusCircle },
-  ];
-
-  // Predefined expense categories
-  const expenseCategories: {
-    id: ExpenseCategory;
-    nameBn: string;
-    nameEn: string;
-    icon: React.ElementType;
-  }[] = [
-    { id: 'supplies', nameBn: 'কাগজ, কালি ও মালামাল ক্রয়', nameEn: 'Paper & Toner Refills', icon: ShoppingBag },
-    { id: 'shop_rent', nameBn: 'দোকান ভাড়া', nameEn: 'Shop Rent', icon: Home },
-    { id: 'electricity_bill', nameBn: 'বিদ্যুৎ বিল', nameEn: 'Electricity Bill', icon: Zap },
-    { id: 'internet_bill', nameBn: 'ইন্টারনেট বিল (WiFi)', nameEn: 'Internet Bill', icon: Wifi },
-    { id: 'tea_snacks', nameBn: 'নাস্তা ও আপ্যায়ন', nameEn: 'Tea & Snacks', icon: Coffee },
-    { id: 'maintenance', nameBn: 'মেশিন ও প্রিন্টার মেরামত', nameEn: 'Printer Repair & Service', icon: Wrench },
-    { id: 'other_expense', nameBn: 'অন্যান্য দোকান খরচ', nameEn: 'Other Shop Expense', icon: PlusCircle },
-  ];
 
   // Handle service category selection
   const handleSelectService = (srvId: string, defaultPrice?: number) => {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   FileText,
   Printer,
@@ -189,19 +189,22 @@ export const ReportsAndReceipts: React.FC<ReportsAndReceiptsProps> = ({
   const [copiedText, setCopiedText] = useState(false);
   const [previewTab, setPreviewTab] = useState<'sheet' | 'zoom'>('sheet');
 
-  const receiptTransactions = transactions
-    .filter((t) => t.type === 'INCOME')
-    .filter((t) => {
-      if (!searchReceiptQuery.trim()) return true;
-      const q = searchReceiptQuery.toLowerCase();
-      return (
-        t.invoiceNo.toLowerCase().includes(q) ||
-        (t.customerName && t.customerName.toLowerCase().includes(q)) ||
-        (t.customerPhone && t.customerPhone.includes(q)) ||
-        t.categoryLabelBn.toLowerCase().includes(q) ||
-        String(t.amount).includes(q)
-      );
-    });
+  // Memoize filtered receipt transactions for lightning fast search and rendering
+  const receiptTransactions = useMemo(() => {
+    const q = searchReceiptQuery.trim().toLowerCase();
+    return transactions
+      .filter((t) => t.type === 'INCOME')
+      .filter((t) => {
+        if (!q) return true;
+        return (
+          t.invoiceNo.toLowerCase().includes(q) ||
+          (t.customerName && t.customerName.toLowerCase().includes(q)) ||
+          (t.customerPhone && t.customerPhone.includes(q)) ||
+          t.categoryLabelBn.toLowerCase().includes(q) ||
+          String(t.amount).includes(q)
+        );
+      });
+  }, [transactions, searchReceiptQuery]);
 
   const triggerPrint = () => {
     if (!activeReceiptTransaction) return;

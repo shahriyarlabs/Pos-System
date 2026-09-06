@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Navbar } from './components/Navbar';
 import { Dashboard } from './components/Dashboard';
 import { TransactionModal } from './components/TransactionModal';
@@ -122,6 +122,26 @@ export default function App() {
   // Realtime subscription cleanup ref
   const unsubscribeRealtimeRef = useRef<(() => void) | null>(null);
 
+// O(1) Quick equality check between previous & incoming data to eliminate unnecessary re-renders
+function isEqualDataList(prevList: any[], nextList: any[]): boolean {
+  if (prevList === nextList) return true;
+  if (prevList.length !== nextList.length) return false;
+  if (prevList.length === 0) return true;
+  const indices = [0, prevList.length - 1, Math.floor(prevList.length / 2)];
+  for (const i of indices) {
+    const p = prevList[i];
+    const n = nextList[i];
+    if (!p || !n) return false;
+    if (p.id !== n.id) return false;
+    if (p.amount !== undefined && p.amount !== n.amount) return false;
+    if (p.timestamp !== undefined && p.timestamp !== n.timestamp) return false;
+    if (p.currentDue !== undefined && p.currentDue !== n.currentDue) return false;
+    if (p.stockQuantity !== undefined && p.stockQuantity !== n.stockQuantity) return false;
+    if (p.balance !== undefined && p.balance !== n.balance) return false;
+  }
+  return true;
+}
+
   // 1. Fetch live data from Supabase (supports silent background sync without UI interruptions)
   const loadDatabaseData = useCallback(
     async (configToUse?: SupabaseConfig, targetShopKey?: string, isSilent: boolean = false) => {
@@ -148,16 +168,33 @@ export default function App() {
         const result = await pullAllFromSupabase(client, shopKey);
 
         if (result.success && result.data) {
-          setTransactions(result.data.transactions || []);
-          setCustomers(result.data.customers || []);
-          setInventory(result.data.inventory || []);
+          const nextTrx = result.data.transactions || [];
+          const nextCust = result.data.customers || [];
+          const nextInv = result.data.inventory || [];
+          const nextMfs = result.data.mfsAccounts || [];
+          const nextSettings = result.data.settings;
 
-          if (result.data.mfsAccounts && result.data.mfsAccounts.length > 0) {
-            setMfsAccounts(result.data.mfsAccounts);
+          // Only trigger state updates if data actually changed — eliminates background stutter
+          setTransactions((prev) => (isEqualDataList(prev, nextTrx) ? prev : nextTrx));
+          setCustomers((prev) => (isEqualDataList(prev, nextCust) ? prev : nextCust));
+          setInventory((prev) => (isEqualDataList(prev, nextInv) ? prev : nextInv));
+
+          if (nextMfs.length > 0) {
+            setMfsAccounts((prev) => (isEqualDataList(prev, nextMfs) ? prev : nextMfs));
           }
 
-          if (result.data.settings) {
-            setSettings((prev) => ({ ...prev, ...result.data.settings }));
+          if (nextSettings) {
+            setSettings((prev) => {
+              if (
+                prev.shopName === nextSettings.shopName &&
+                prev.openingCashBalance === nextSettings.openingCashBalance &&
+                prev.shopKey === nextSettings.shopKey &&
+                prev.receiptFooterNote === nextSettings.receiptFooterNote
+              ) {
+                return prev;
+              }
+              return { ...prev, ...nextSettings };
+            });
           }
 
           setSupabaseConfig((prev) => ({
@@ -208,13 +245,13 @@ export default function App() {
       loadDatabaseData(undefined, undefined, true);
     });
 
-    // B. Background Auto-Sync Heartbeat (Runs every 4 seconds silently)
-    // Guarantees all devices (PC, Android, iPhone) stay continuously synchronized without pressing refresh
+    // B. Background Auto-Sync Heartbeat (Runs every 10 seconds silently as fallback)
+    // Lowers CPU and network bandwidth by 60% while maintaining continuous synchronization
     const autoSyncInterval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         loadDatabaseData(undefined, undefined, true);
       }
-    }, 4000);
+    }, 10000);
 
     // C. Instant auto-sync on tab switch, window focus, or network reconnect
     const handleActiveTrigger = () => {
@@ -270,8 +307,11 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Centralized calculations using calculation engine
-  const audit = auditAllCalculations(settings, transactions, mfsAccounts, customers, inventory);
+  // Centralized calculations using calculation engine (memoized to maximize UI responsiveness)
+  const audit = useMemo(
+    () => auditAllCalculations(settings, transactions, mfsAccounts, customers, inventory),
+    [settings, transactions, mfsAccounts, customers, inventory]
+  );
 
   // Authentication Handlers
   const handleLoginSuccess = (

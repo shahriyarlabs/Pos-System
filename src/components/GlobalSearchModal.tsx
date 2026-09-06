@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Search,
   X,
@@ -64,9 +64,11 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
 
   const cleanQuery = query.trim().toLowerCase();
 
-  // Search results
-  const matchingTransactions = cleanQuery
-    ? transactions.filter(
+  // Search results (Memoized for fast key responsiveness)
+  const matchingTransactions = useMemo(() => {
+    if (!cleanQuery) return [];
+    return transactions
+      .filter(
         (t) =>
           t.invoiceNo.toLowerCase().includes(cleanQuery) ||
           (t.customerName && t.customerName.toLowerCase().includes(cleanQuery)) ||
@@ -75,28 +77,35 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
           t.categoryLabelEn.toLowerCase().includes(cleanQuery) ||
           (t.note && t.note.toLowerCase().includes(cleanQuery)) ||
           String(t.amount).includes(cleanQuery)
-      ).slice(0, 8)
-    : [];
+      )
+      .slice(0, 8);
+  }, [cleanQuery, transactions]);
 
-  const matchingCustomers = cleanQuery
-    ? customers.filter(
+  const matchingCustomers = useMemo(() => {
+    if (!cleanQuery) return [];
+    return customers
+      .filter(
         (c) =>
           c.name.toLowerCase().includes(cleanQuery) ||
           c.phone.includes(cleanQuery) ||
           (c.address && c.address.toLowerCase().includes(cleanQuery)) ||
           (c.notes && c.notes.toLowerCase().includes(cleanQuery))
-      ).slice(0, 6)
-    : [];
+      )
+      .slice(0, 6);
+  }, [cleanQuery, customers]);
 
-  const matchingInventory = cleanQuery
-    ? inventory.filter(
+  const matchingInventory = useMemo(() => {
+    if (!cleanQuery) return [];
+    return inventory
+      .filter(
         (i) =>
           i.code.toLowerCase().includes(cleanQuery) ||
           i.nameBn.toLowerCase().includes(cleanQuery) ||
           i.nameEn.toLowerCase().includes(cleanQuery) ||
           i.category.toLowerCase().includes(cleanQuery)
-      ).slice(0, 6)
-    : [];
+      )
+      .slice(0, 6);
+  }, [cleanQuery, inventory]);
 
   const hasAnyResults =
     matchingTransactions.length > 0 ||

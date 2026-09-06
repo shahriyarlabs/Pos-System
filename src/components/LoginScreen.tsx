@@ -27,6 +27,7 @@ import {
   Check,
   Code,
   Terminal,
+  ExternalLink,
 } from 'lucide-react';
 import { ShopSettings, SupabaseConfig, UserSession } from '../types';
 import {
@@ -163,6 +164,191 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [regDbKey, setRegDbKey] = useState(supabaseConfig.anonKey || 'sb_publishable_YhEUvRLOVOA5pPTLiAHn1A_3Ye1djfx');
   const [isTestingDb, setIsTestingDb] = useState(false);
   const [dbTestStatus, setDbTestStatus] = useState<{ success: boolean; message: string } | null>(null);
+
+  // Database table creation (SQL) in registration
+  const [showRegSql, setShowRegSql] = useState(false);
+  const [regSqlCopied, setRegSqlCopied] = useState(false);
+
+  const getRegistrationSql = () => {
+    const targetShopId = (regShopId.trim() || 'brothers-digital').toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+    const targetShopName = regShopName.trim() || 'ব্রাদার্স ডিজিটাল সেন্টার';
+    const targetSubtitle = regShopSubtitle.trim() || 'Brothers Digital Center & Cyber Point';
+    const targetOwner = regOwnerName.trim() || 'শাহরিয়ার ইমন';
+    const targetPhone = regPhone.trim() || '01309369789';
+    const targetAddress = regAddress.trim() || 'বটতলা বাজার, মদন, নেত্রকোনা';
+    const targetPin = regPin.trim() || '1235';
+    const targetCash = regOpeningCash || 0;
+    const targetLogo = regLogoUrl || '';
+
+    return `-- ==========================================
+-- ডেটাবেজ টেবিল তৈরি (SQL Script)
+-- দোকান: ${targetShopName} (ID: ${targetShopId})
+-- Supabase SQL Editor -> New Query -> Run
+-- ==========================================
+
+-- ১. শপ সেটিংস টেবিল (Shop Settings)
+CREATE TABLE IF NOT EXISTS shop_settings (
+    shop_id TEXT PRIMARY KEY,
+    shop_name TEXT NOT NULL,
+    shop_subtitle TEXT,
+    owner_name TEXT,
+    phone1 TEXT,
+    phone2 TEXT,
+    address TEXT,
+    email TEXT,
+    opening_cash_balance NUMERIC DEFAULT 0,
+    receipt_footer_note TEXT,
+    receipt_type TEXT DEFAULT 'standard',
+    admin_pin TEXT DEFAULT '1235',
+    logo_url TEXT,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ২. কাস্টমার বকেয়া খাতা (Customers)
+CREATE TABLE IF NOT EXISTS customers (
+    id TEXT PRIMARY KEY,
+    shop_id TEXT NOT NULL DEFAULT '${targetShopId}',
+    name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    address TEXT,
+    total_billed NUMERIC DEFAULT 0,
+    total_paid NUMERIC DEFAULT 0,
+    current_due NUMERIC DEFAULT 0,
+    last_transaction_date TIMESTAMPTZ DEFAULT NOW(),
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ৩. ইনভেন্টরি ও পণ্য স্টক (Inventory Items)
+CREATE TABLE IF NOT EXISTS inventory_items (
+    id TEXT PRIMARY KEY,
+    shop_id TEXT NOT NULL DEFAULT '${targetShopId}',
+    code TEXT NOT NULL,
+    name_bn TEXT NOT NULL,
+    name_en TEXT NOT NULL,
+    category TEXT NOT NULL,
+    stock_quantity NUMERIC NOT NULL DEFAULT 0,
+    unit TEXT DEFAULT 'Pcs',
+    unit_bn TEXT DEFAULT 'টি',
+    purchase_price NUMERIC NOT NULL DEFAULT 0,
+    selling_price NUMERIC NOT NULL DEFAULT 0,
+    low_stock_threshold NUMERIC DEFAULT 5,
+    last_restocked TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ৪. মোবাইল ব্যাংকিং ওয়ালেট (MFS Accounts)
+CREATE TABLE IF NOT EXISTS mfs_accounts (
+    id TEXT PRIMARY KEY,
+    shop_id TEXT NOT NULL DEFAULT '${targetShopId}',
+    provider TEXT NOT NULL,
+    account_name TEXT NOT NULL,
+    agent_number TEXT,
+    balance NUMERIC NOT NULL DEFAULT 0,
+    commission_earned_today NUMERIC DEFAULT 0,
+    cash_in_today NUMERIC DEFAULT 0,
+    cash_out_today NUMERIC DEFAULT 0,
+    color TEXT DEFAULT '#10b981'
+);
+
+-- ৫. দৈনিক হিসাব ও লেনদেন (Transactions)
+CREATE TABLE IF NOT EXISTS transactions (
+    id TEXT PRIMARY KEY,
+    shop_id TEXT NOT NULL DEFAULT '${targetShopId}',
+    invoice_no TEXT NOT NULL,
+    date TEXT NOT NULL,
+    time TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    type TEXT NOT NULL,
+    category TEXT NOT NULL,
+    category_label_bn TEXT NOT NULL,
+    category_label_en TEXT NOT NULL,
+    service_id TEXT,
+    amount NUMERIC NOT NULL,
+    fee_or_cost NUMERIC DEFAULT 0,
+    profit NUMERIC DEFAULT 0,
+    payment_method TEXT NOT NULL,
+    mfs_provider TEXT,
+    customer_id TEXT,
+    customer_name TEXT,
+    customer_phone TEXT,
+    is_due BOOLEAN DEFAULT false,
+    due_amount NUMERIC DEFAULT 0,
+    amount_paid NUMERIC DEFAULT 0,
+    note TEXT,
+    status TEXT DEFAULT 'COMPLETED',
+    operator_id TEXT,
+    operator_name TEXT
+);
+
+-- ৬. সিকিউরিটি পলিসি (Row Level Security - RLS)
+ALTER TABLE shop_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inventory_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mfs_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public shop_settings access" ON shop_settings;
+CREATE POLICY "Public shop_settings access" ON shop_settings FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public customers access" ON customers;
+CREATE POLICY "Public customers access" ON customers FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public inventory access" ON inventory_items;
+CREATE POLICY "Public inventory access" ON inventory_items FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public mfs access" ON mfs_accounts;
+CREATE POLICY "Public mfs access" ON mfs_accounts FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public transactions access" ON transactions;
+CREATE POLICY "Public transactions access" ON transactions FOR ALL USING (true) WITH CHECK (true);
+
+-- ৭. রিয়েলটাইম লাইভ সিঙ্ক অ্যাক্টিভেশন
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    CREATE PUBLICATION supabase_realtime;
+  END IF;
+END $$;
+
+ALTER PUBLICATION supabase_realtime ADD TABLE shop_settings, customers, inventory_items, mfs_accounts, transactions;
+
+-- ৮. দোকানের প্রাথমিক তথ্য ইনসার্ট (${targetShopName})
+INSERT INTO shop_settings (
+    shop_id, shop_name, shop_subtitle, owner_name,
+    phone1, address, opening_cash_balance, admin_pin, logo_url, updated_at
+) VALUES (
+    '${targetShopId}',
+    '${targetShopName}',
+    '${targetSubtitle}',
+    '${targetOwner}',
+    '${targetPhone}',
+    '${targetAddress}',
+    ${targetCash},
+    '${targetPin}',
+    '${targetLogo}',
+    NOW()
+) ON CONFLICT (shop_id) DO UPDATE SET
+    shop_name = EXCLUDED.shop_name,
+    owner_name = EXCLUDED.owner_name,
+    phone1 = EXCLUDED.phone1,
+    admin_pin = EXCLUDED.admin_pin,
+    updated_at = NOW();
+
+-- ৯. মোবাইল ব্যাংকিং এজেন্ট একাউন্টস
+INSERT INTO mfs_accounts (id, shop_id, provider, account_name, agent_number, balance, color)
+VALUES
+  ('mfs-bkash-${targetShopId}', '${targetShopId}', 'BKASH', 'বিকাশ এজেন্ট', '${targetPhone}', 10000, '#E2136E'),
+  ('mfs-nagad-${targetShopId}', '${targetShopId}', 'NAGAD', 'নগদ এজেন্ট', '${targetPhone}', 10000, '#F7941D'),
+  ('mfs-rocket-${targetShopId}', '${targetShopId}', 'ROCKET', 'রকেট এজেন্ট', '${targetPhone}', 5000, '#8C3494')
+ON CONFLICT (id) DO NOTHING;
+`;
+  };
+
+  const handleCopyRegSql = () => {
+    navigator.clipboard.writeText(getRegistrationSql());
+    setRegSqlCopied(true);
+    setTimeout(() => setRegSqlCopied(false), 2500);
+  };
 
   const [isRegistering, setIsRegistering] = useState(false);
   const [regError, setRegError] = useState<string | null>(null);
@@ -1231,6 +1417,99 @@ ON CONFLICT (id) DO NOTHING;`;
                   <span>{dbTestStatus.message}</span>
                 </div>
               )}
+            </div>
+
+            {/* STEP 5: DATABASE TABLE CREATION (SQL SCRIPT) */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <div className="flex items-center gap-2 text-emerald-400">
+                  <Terminal className="w-4 h-4 text-emerald-400" />
+                  <h3 className="text-xs font-black uppercase tracking-wider">৫. ডেটাবেজ টেবিল তৈরি (SQL)</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyRegSql}
+                  className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md"
+                >
+                  {regSqlCopied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-white" />
+                      <span>কপি হয়েছে!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-white" />
+                      <span>১-ক্লিকে SQL কপি</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="p-3.5 bg-slate-900/90 border border-slate-700/80 rounded-2xl space-y-3">
+                <div className="flex items-start gap-2.5">
+                  <Code className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <div className="text-[11px] text-slate-300 leading-relaxed space-y-1.5">
+                    <p className="font-bold text-white text-xs">
+                      নতুন Supabase প্রজেক্টে ডেটাবেজ টেবিল তৈরির সহজ নিয়ম:
+                    </p>
+                    <ol className="list-decimal list-inside space-y-1 text-slate-300">
+                      <li>
+                        উপরের <strong className="text-emerald-400 font-bold">"১-ক্লিকে SQL কপি"</strong> বাটনে ক্লিক করে স্ক্রিপ্টটি কপি করুন।
+                      </li>
+                      <li>
+                        Supabase ড্যাশবোর্ডে গিয়ে বামের মেনু থেকে{' '}
+                        <strong className="text-white font-bold">SQL Editor</strong>-এ যান ও{' '}
+                        <strong className="text-white font-bold">New Query</strong> খুলুন।
+                      </li>
+                      <li>
+                        কপিকৃত কোডটি পেস্ট করে নিচে সবুজ রঙের{' '}
+                        <strong className="text-emerald-400 font-bold">Run</strong> বাটনে চাপুন।
+                      </li>
+                    </ol>
+                    <p className="text-[10px] text-emerald-400/90 pt-1">
+                      ✓ এটি স্বয়ংক্রিয়ভাবে shop_settings, transactions, customers, inventory_items, mfs_accounts টেবিল এবং রিয়েলটাইম লাইভ সিঙ্ক অ্যাক্টিভ করে দেবে।
+                    </p>
+                  </div>
+                </div>
+
+                {/* View/Hide SQL Toggle & Supabase Dashboard Link */}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setShowRegSql(!showRegSql)}
+                    className="text-[11px] text-emerald-400 hover:text-emerald-300 font-bold cursor-pointer flex items-center gap-1"
+                  >
+                    {showRegSql ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    <span>{showRegSql ? 'SQL স্ক্রিপ্ট লুকান' : 'সম্পূর্ণ SQL স্ক্রিপ্ট দেখতে ক্লিক করুন'}</span>
+                  </button>
+
+                  <a
+                    href="https://supabase.com/dashboard"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] text-slate-400 hover:text-emerald-300 flex items-center gap-1 font-medium transition"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    <span>Supabase Dashboard</span>
+                  </a>
+                </div>
+
+                {showRegSql && (
+                  <div className="relative mt-2">
+                    <pre className="p-3 bg-slate-950 text-emerald-300 rounded-xl text-[10px] font-mono overflow-x-auto max-h-56 border border-slate-800 select-all leading-relaxed">
+                      {getRegistrationSql()}
+                    </pre>
+                    <button
+                      type="button"
+                      onClick={handleCopyRegSql}
+                      className="absolute top-2 right-2 px-2.5 py-1 rounded-lg bg-emerald-700/90 hover:bg-emerald-600 text-white font-bold text-[10px] flex items-center gap-1 shadow-sm cursor-pointer"
+                    >
+                      {regSqlCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                      <span>{regSqlCopied ? 'কপি হয়েছে' : 'কপি করুন'}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Registration Submit Button */}

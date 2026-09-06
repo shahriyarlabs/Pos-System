@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   User,
   Phone,
@@ -57,18 +57,34 @@ export const CustomerDueLedger: React.FC<CustomerDueLedgerProps> = ({
   // Copied message alert state
   const [copiedCustomerId, setCopiedCustomerId] = useState<string | null>(null);
 
-  // Filter customers
-  const filteredCustomers = customers.filter((c) => {
-    const matchesSearch =
-      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.phone.includes(searchTerm);
-    if (!matchesSearch) return false;
-    if (filterDueOnly) return c.currentDue > 0;
-    return true;
-  });
+  // Filter customers (Memoized for smooth typing)
+  const filteredCustomers = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    return customers.filter((c) => {
+      if (filterDueOnly && c.currentDue <= 0) return false;
+      if (!q) return true;
+      return (
+        c.name.toLowerCase().includes(q) ||
+        c.phone.includes(q)
+      );
+    });
+  }, [customers, searchTerm, filterDueOnly]);
 
-  const totalOutstandingDue = customers.reduce((sum, c) => sum + c.currentDue, 0);
-  const customersWithDueCount = customers.filter((c) => c.currentDue > 0).length;
+  const { totalOutstandingDue, customersWithDueCount } = useMemo(() => {
+    let dueSum = 0;
+    let dueCount = 0;
+    for (let i = 0; i < customers.length; i++) {
+      const d = customers[i].currentDue;
+      if (d > 0) {
+        dueSum += d;
+        dueCount++;
+      }
+    }
+    return {
+      totalOutstandingDue: dueSum,
+      customersWithDueCount: dueCount,
+    };
+  }, [customers]);
 
   // Open Payment modal
   const handleOpenPayment = (customer: Customer) => {

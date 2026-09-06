@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   TrendingUp,
   TrendingDown,
@@ -56,102 +56,118 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [trxFilter, setTrxFilter] = useState<'ALL' | 'INCOME' | 'EXPENSE'>('ALL');
   const [trxSearchQuery, setTrxSearchQuery] = useState('');
 
-  // 1. Audit Calculation Result
-  const audit = auditAllCalculations(settings, transactions, mfsAccounts, customers, inventory);
+  // 1. Audit Calculation Result (Memoized for high-speed rendering)
+  const audit = useMemo(
+    () => auditAllCalculations(settings, transactions, mfsAccounts, customers, inventory),
+    [settings, transactions, mfsAccounts, customers, inventory]
+  );
 
-  // Dynamic counts for each period tab
-  const now = new Date();
-  const periodCounts = {
-    today: transactions.filter((t) => {
-      const d = new Date(t.timestamp);
-      return (
-        d.getDate() === now.getDate() &&
-        d.getMonth() === now.getMonth() &&
-        d.getFullYear() === now.getFullYear()
-      );
-    }).length,
-    yesterday: transactions.filter((t) => {
-      const y = new Date(now);
-      y.setDate(now.getDate() - 1);
-      const d = new Date(t.timestamp);
-      return (
-        d.getDate() === y.getDate() &&
-        d.getMonth() === y.getMonth() &&
-        d.getFullYear() === y.getFullYear()
-      );
-    }).length,
-    week: transactions.filter(
-      (t) => new Date(t.timestamp) >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-    ).length,
-    month: transactions.filter((t) => {
-      const d = new Date(t.timestamp);
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    }).length,
-    all: transactions.length,
-  };
+  // Dynamic counts for each period tab (Memoized)
+  const periodCounts = useMemo(() => {
+    const now = new Date();
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const yesterdayMidnight = todayMidnight - 24 * 60 * 60 * 1000;
+    const weekMidnight = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
 
-  // Filter transactions based on selected period
-  const filteredTransactions = transactions.filter((t) => {
-    if (period === 'all') return true;
-    const tDate = new Date(t.timestamp);
-    if (period === 'today') {
-      return (
-        tDate.getDate() === now.getDate() &&
-        tDate.getMonth() === now.getMonth() &&
-        tDate.getFullYear() === now.getFullYear()
-      );
-    } else if (period === 'yesterday') {
-      const yesterday = new Date(now);
-      yesterday.setDate(now.getDate() - 1);
-      return (
-        tDate.getDate() === yesterday.getDate() &&
-        tDate.getMonth() === yesterday.getMonth() &&
-        tDate.getFullYear() === yesterday.getFullYear()
-      );
-    } else if (period === 'week') {
-      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      return tDate >= sevenDaysAgo;
-    } else {
-      // Month
-      return (
-        tDate.getMonth() === now.getMonth() &&
-        tDate.getFullYear() === now.getFullYear()
-      );
+    let today = 0;
+    let yesterday = 0;
+    let week = 0;
+    let month = 0;
+
+    for (let i = 0; i < transactions.length; i++) {
+      const t = transactions[i];
+      const time = new Date(t.timestamp).getTime();
+      const d = new Date(t.timestamp);
+
+      if (time >= todayMidnight) today++;
+      if (time >= yesterdayMidnight && time < todayMidnight) yesterday++;
+      if (time >= weekMidnight) week++;
+      if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) month++;
     }
-  });
 
-  // Calculate Period-specific Income and Expense
-  const periodIncome = filteredTransactions
-    .filter((t) => t.type === 'INCOME')
-    .reduce((sum, t) => sum + t.amount, 0);
+    return {
+      today,
+      yesterday,
+      week,
+      month,
+      all: transactions.length,
+    };
+  }, [transactions]);
 
-  const periodExpense = filteredTransactions
-    .filter((t) => t.type === 'EXPENSE')
-    .reduce((sum, t) => sum + t.amount, 0);
+  // Filter transactions based on selected period (Memoized)
+  const filteredTransactions = useMemo(() => {
+    if (period === 'all') return transactions;
+    const now = new Date();
+    const todayDate = now.getDate();
+    const todayMonth = now.getMonth();
+    const todayYear = now.getFullYear();
+    const yesterdayDate = new Date(now.getTime() - 24 * 60 * 60 * 1000).getDate();
+    const sevenDaysAgo = now.getTime() - 7 * 24 * 60 * 60 * 1000;
 
-  const periodNetProfit = periodIncome - periodExpense;
+    return transactions.filter((t) => {
+      const tDate = new Date(t.timestamp);
+      if (period === 'today') {
+        return (
+          tDate.getDate() === todayDate &&
+          tDate.getMonth() === todayMonth &&
+          tDate.getFullYear() === todayYear
+        );
+      } else if (period === 'yesterday') {
+        return (
+          tDate.getDate() === yesterdayDate &&
+          tDate.getMonth() === todayMonth &&
+          tDate.getFullYear() === todayYear
+        );
+      } else if (period === 'week') {
+        return tDate.getTime() >= sevenDaysAgo;
+      } else {
+        // Month
+        return tDate.getMonth() === todayMonth && tDate.getFullYear() === todayYear;
+      }
+    });
+  }, [transactions, period]);
+
+  // Calculate Period-specific Income and Expense (Memoized)
+  const { periodIncome, periodExpense, periodNetProfit } = useMemo(() => {
+    let income = 0;
+    let expense = 0;
+    for (let i = 0; i < filteredTransactions.length; i++) {
+      const t = filteredTransactions[i];
+      if (t.type === 'INCOME') income += t.amount;
+      else if (t.type === 'EXPENSE') expense += t.amount;
+    }
+    return {
+      periodIncome: income,
+      periodExpense: expense,
+      periodNetProfit: income - expense,
+    };
+  }, [filteredTransactions]);
 
   // If 'today' tab is active but today has 0 transactions while database contains existing transactions,
   // automatically show recent transactions so the user never sees an empty screen or feels the need to manually refresh!
   const isAutoShowingRecent = period === 'today' && periodCounts.today === 0 && transactions.length > 0;
   const targetTrxList = isAutoShowingRecent ? transactions : filteredTransactions;
 
-  // Filtered list for the transactions table
-  const displayedTransactions = targetTrxList.filter((t) => {
-    if (trxFilter !== 'ALL' && t.type !== trxFilter) return false;
-    if (trxSearchQuery.trim()) {
-      const q = trxSearchQuery.toLowerCase();
-      const match =
-        t.invoiceNo.toLowerCase().includes(q) ||
-        (t.customerName && t.customerName.toLowerCase().includes(q)) ||
-        (t.customerPhone && t.customerPhone.includes(q)) ||
-        t.categoryLabelBn.toLowerCase().includes(q) ||
-        (t.note && t.note.toLowerCase().includes(q)) ||
-        String(t.amount).includes(q);
-      if (!match) return false;
-    }
-    return true;
-  });
+  // Filtered list for the transactions table (Memoized so typing search does not recompute other stats)
+  const displayedTransactions = useMemo(() => {
+    const q = trxSearchQuery.trim().toLowerCase();
+    return targetTrxList.filter((t) => {
+      if (trxFilter !== 'ALL' && t.type !== trxFilter) return false;
+      if (q) {
+        const match =
+          t.invoiceNo.toLowerCase().includes(q) ||
+          (t.customerName && t.customerName.toLowerCase().includes(q)) ||
+          (t.customerPhone && t.customerPhone.includes(q)) ||
+          t.categoryLabelBn.toLowerCase().includes(q) ||
+          (t.note && t.note.toLowerCase().includes(q)) ||
+          String(t.amount).includes(q);
+        if (!match) return false;
+      }
+      return true;
+    });
+  }, [targetTrxList, trxFilter, trxSearchQuery]);
 
   return (
     <div className="space-y-6 pb-12">

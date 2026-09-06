@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Smartphone,
   ArrowDownLeft,
@@ -49,8 +49,15 @@ export const MobileBankingLedger: React.FC<MobileBankingLedgerProps> = ({
   const [editingAccount, setEditingAccount] = useState<MFSAccount | null>(null);
   const [customBalance, setCustomBalance] = useState('');
 
-  const totalWalletBalance = mfsAccounts.reduce((sum, a) => sum + a.balance, 0);
-  const totalCommissionToday = mfsAccounts.reduce((sum, a) => sum + a.commissionEarnedToday, 0);
+  const { totalWalletBalance, totalCommissionToday } = useMemo(() => {
+    let balance = 0;
+    let commission = 0;
+    for (let i = 0; i < mfsAccounts.length; i++) {
+      balance += mfsAccounts[i].balance;
+      commission += mfsAccounts[i].commissionEarnedToday;
+    }
+    return { totalWalletBalance: balance, totalCommissionToday: commission };
+  }, [mfsAccounts]);
 
   // Auto calculate default agent commission (usually ~4-5 Tk per 1000 Tk cashout)
   const handleAmountChange = (val: string) => {

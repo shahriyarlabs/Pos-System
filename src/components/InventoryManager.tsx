@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Package,
   AlertTriangle,
@@ -44,23 +44,37 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({
   const [sellingPrice, setSellingPrice] = useState('150');
   const [lowStockThreshold, setLowStockThreshold] = useState('5');
 
-  // Filter items
-  const filteredItems = inventory.filter((item) => {
-    const matchesSearch =
-      item.nameBn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.nameEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.code.toLowerCase().includes(searchTerm.toLowerCase());
-    if (!matchesSearch) return false;
+  // Filter items (Memoized for peak search performance)
+  const filteredItems = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    return inventory.filter((item) => {
+      if (selectedCategory !== 'ALL' && item.category !== selectedCategory) return false;
+      if (showLowStockOnly && item.stockQuantity > item.lowStockThreshold) return false;
+      if (!q) return true;
+      return (
+        item.nameBn.toLowerCase().includes(q) ||
+        item.nameEn.toLowerCase().includes(q) ||
+        item.code.toLowerCase().includes(q)
+      );
+    });
+  }, [inventory, searchTerm, selectedCategory, showLowStockOnly]);
 
-    if (selectedCategory !== 'ALL' && item.category !== selectedCategory) return false;
-    if (showLowStockOnly && item.stockQuantity > item.lowStockThreshold) return false;
-
-    return true;
-  });
-
-  const lowStockCount = inventory.filter((i) => i.stockQuantity <= i.lowStockThreshold).length;
-  const totalPurchaseValue = inventory.reduce((sum, i) => sum + i.stockQuantity * i.purchasePrice, 0);
-  const totalRetailValue = inventory.reduce((sum, i) => sum + i.stockQuantity * i.sellingPrice, 0);
+  const { lowStockCount, totalPurchaseValue, totalRetailValue } = useMemo(() => {
+    let lowCount = 0;
+    let purchaseVal = 0;
+    let retailVal = 0;
+    for (let i = 0; i < inventory.length; i++) {
+      const item = inventory[i];
+      if (item.stockQuantity <= item.lowStockThreshold) lowCount++;
+      purchaseVal += item.stockQuantity * item.purchasePrice;
+      retailVal += item.stockQuantity * item.sellingPrice;
+    }
+    return {
+      lowStockCount: lowCount,
+      totalPurchaseValue: purchaseVal,
+      totalRetailValue: retailVal,
+    };
+  }, [inventory]);
 
   const handleStockAdjust = (itemId: string, currentQty: number, delta: number) => {
     const nextQty = Math.max(0, currentQty + delta);
