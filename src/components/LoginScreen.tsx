@@ -93,7 +93,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [activeMode, setActiveMode] = useState<'login' | 'register'>('login');
 
   // --- LOGIN FORM STATE ---
-  const [loginShopId, setLoginShopId] = useState(settings.shopKey || 'bdc');
+  const [loginShopId, setLoginShopId] = useState(settings.shopKey || '');
   const [loginPin, setLoginPin] = useState('');
   const [showLoginPin, setShowLoginPin] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -114,8 +114,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
   // Fetch registered shops in this Supabase database
   const fetchRegisteredShops = async () => {
-    const url = (showCustomDbLogin && customDbUrl.trim()) || supabaseConfig.url || 'https://sjudmshppklwhwgivnzw.supabase.co';
-    const key = (showCustomDbLogin && customDbKey.trim()) || supabaseConfig.anonKey || 'sb_publishable_YhEUvRLOVOA5pPTLiAHn1A_3Ye1djfx';
+    const url = (showCustomDbLogin && customDbUrl.trim()) || supabaseConfig.url || '';
+    const key = (showCustomDbLogin && customDbKey.trim()) || supabaseConfig.anonKey || '';
+    if (!url || !key) return;
     const client = getSupabaseClient(url, key);
     if (!client) return;
 
@@ -124,7 +125,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       const shops = await listShopsFromSupabase(client);
       setRegisteredShops(shops);
       if (shops.length > 0) {
-        if (!loginShopId || loginShopId === 'brothers-digital' || loginShopId === '') {
+        if (!loginShopId || loginShopId === '') {
           setLoginShopId(shops[0].shopId);
         }
       }
@@ -419,8 +420,15 @@ ALTER PUBLICATION supabase_realtime ADD TABLE shop_settings, customers, inventor
 
     try {
       // Determine which Supabase URL/Key to query
-      const urlToUse = (showCustomDbLogin && customDbUrl.trim()) || supabaseConfig.url || 'https://sjudmshppklwhwgivnzw.supabase.co';
-      const keyToUse = (showCustomDbLogin && customDbKey.trim()) || supabaseConfig.anonKey || 'sb_publishable_YhEUvRLOVOA5pPTLiAHn1A_3Ye1djfx';
+      const urlToUse = (showCustomDbLogin && customDbUrl.trim()) || supabaseConfig.url || '';
+      const keyToUse = (showCustomDbLogin && customDbKey.trim()) || supabaseConfig.anonKey || '';
+
+      if (!urlToUse || !keyToUse) {
+        setLoginError('ডাটাবেজ সংযোগ পাওয়া যায়নি। রেজিস্ট্রেশন করুন অথবা নিচে "ডাটাবেজ URL ও Key দিন" থেকে আপনার নিজস্ব Supabase তথ্য দিন।');
+        setShowCustomDbLogin(true);
+        setIsLoggingIn(false);
+        return;
+      }
 
       const client = getSupabaseClient(urlToUse, keyToUse);
       if (!client) {
@@ -729,12 +737,12 @@ ALTER PUBLICATION supabase_realtime ADD TABLE shop_settings, customers, inventor
                   required
                   value={loginShopId}
                   onChange={(e) => setLoginShopId(e.target.value)}
-                  placeholder="যেমন: bdc বা ব্রাদার্স ডিজিটাল বা 01309369789"
+                  placeholder="যেমন: আপনার শপ আইডি বা মোবাইল নম্বর"
                   className="w-full pl-10 pr-4 py-3 bg-slate-800/80 border border-slate-700 rounded-2xl text-sm font-semibold text-white placeholder-slate-500 focus:outline-hidden focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
                 />
               </div>
               <p className="text-[10px] text-slate-400 mt-1">
-                আপনার শপ আইডি (<span className="font-mono text-emerald-400 font-bold">bdc</span>), অথবা দোকানের নাম, অথবা মোবাইল নম্বর লিখে লগইন করতে পারবেন।
+                আপনার শপ আইডি, অথবা নিবন্ধিত মোবাইল নম্বর লিখে লগইন করতে পারবেন।
               </p>
             </div>
 
@@ -752,7 +760,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE shop_settings, customers, inventor
                   required
                   value={loginPin}
                   onChange={(e) => setLoginPin(e.target.value)}
-                  placeholder="৪-ডিজিটের পিন দিন (যেমন: 1235)"
+                  placeholder="রেজিস্ট্রেশনের সময় দেওয়া ৪-ডিজিট পিন"
                   className="w-full pl-10 pr-12 py-3 bg-slate-800/80 border border-slate-700 rounded-2xl text-sm font-bold text-white placeholder-slate-500 tracking-wider focus:outline-hidden focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
                 />
                 <button
@@ -763,15 +771,8 @@ ALTER PUBLICATION supabase_realtime ADD TABLE shop_settings, customers, inventor
                   {showLoginPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
-                <span>ডিফল্ট মাস্টার পিন: <strong className="text-amber-300">1235</strong> বা <strong className="text-amber-300">1234</strong></span>
-                <button
-                  type="button"
-                  onClick={() => setLoginPin('1235')}
-                  className="text-emerald-400 hover:underline cursor-pointer font-bold"
-                >
-                  পিন পূরণ করুন
-                </button>
+              <div className="text-[10px] text-slate-400 mt-1">
+                <span>দোকান রেজিস্ট্রেশন করার সময় সেট করা আপনার ৪-ডিজিটের পিন কোড দিন।</span>
               </div>
             </div>
 
@@ -783,8 +784,8 @@ ALTER PUBLICATION supabase_realtime ADD TABLE shop_settings, customers, inventor
                 className="w-full flex items-center justify-between text-xs text-slate-300 hover:text-white cursor-pointer"
               >
                 <div className="flex items-center gap-1.5 font-bold">
-                  <Terminal className="w-3.5 h-3.5 text-amber-400" />
-                  <span>ডাটাবেজে ম্যানুয়ালি তথ্য ঢুকানো ও SQL স্ক্রিপ্ট</span>
+                  <Terminal className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>ডেটাবেজ টেবিল তৈরি (SQL স্ক্রিপ্ট)</span>
                 </div>
                 {showManualSql ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </button>
@@ -792,141 +793,16 @@ ALTER PUBLICATION supabase_realtime ADD TABLE shop_settings, customers, inventor
               {showManualSql && (
                 <div className="mt-3 space-y-2.5 pt-2 border-t border-slate-800 text-xs">
                   <p className="text-[11px] text-slate-300 leading-relaxed">
-                    আপনার Supabase ড্যাশবোর্ডে গিয়ে <strong>SQL Editor</strong> &gt; <strong>New Query</strong>-তে গিয়ে নিচের কোডটি পেস্ট করে <strong>Run</strong> বাটনে ক্লিক করলে সমস্ত টেবিল ও <code className="text-emerald-400 font-mono">bdc</code> দোকান তৈরি হয়ে যাবে:
+                    আপনার নিজস্ব Supabase ড্যাশবোর্ডে গিয়ে <strong>SQL Editor</strong> &gt; <strong>New Query</strong>-তে গিয়ে নিচের কোডটি পেস্ট করে <strong>Run</strong> বাটনে ক্লিক করলে ৫টি প্রয়োজনীয় টেবিল তৈরি হয়ে যাবে। এতে <strong>কোনো ডিফল্ট ডেটা নেই</strong> — রেজিস্ট্রেশনের মাধ্যমে আপনার নিজস্ব দোকানের তথ্য যুক্ত হবে:
                   </p>
                   <div className="relative">
                     <pre className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-[10px] font-mono text-emerald-300 max-h-48 overflow-y-auto leading-relaxed select-all">
-{`-- ১. শপ সেটিংস টেবিল
-CREATE TABLE IF NOT EXISTS shop_settings (
-  shop_id TEXT PRIMARY KEY,
-  shop_name TEXT NOT NULL,
-  shop_subtitle TEXT,
-  owner_name TEXT,
-  phone1 TEXT,
-  phone2 TEXT,
-  address TEXT,
-  email TEXT,
-  opening_cash_balance NUMERIC DEFAULT 0,
-  receipt_footer_note TEXT,
-  receipt_type TEXT DEFAULT 'standard',
-  admin_pin TEXT DEFAULT '1235',
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- ২. ব্রাদার্স ডিজিটাল সেন্টার (bdc) ইনসার্ট
-INSERT INTO shop_settings (
-  shop_id, shop_name, shop_subtitle, owner_name,
-  phone1, phone2, address, email, opening_cash_balance,
-  receipt_footer_note, receipt_type, admin_pin, updated_at
-) VALUES (
-  'bdc',
-  'ব্রাদার্স ডিজিটাল সেন্টার',
-  'Brothers Digital Center & Cyber Point',
-  'শাহরিয়ার ইমন',
-  '01309369789',
-  '01518947904',
-  'বটতলা বাজার, মদন, নেত্রকোনা',
-  'brothersdigital.bd@gmail.com',
-  15000,
-  'আমাদের সেবা গ্রহণ করার জন্য ধন্যবাদ!',
-  'standard',
-  '1235',
-  NOW()
-) ON CONFLICT (shop_id) DO UPDATE SET
-  shop_name = EXCLUDED.shop_name,
-  owner_name = EXCLUDED.owner_name,
-  phone1 = EXCLUDED.phone1,
-  admin_pin = EXCLUDED.admin_pin,
-  updated_at = NOW();
-
--- ৩. এমএফএস একাউন্টস টেবিল
-CREATE TABLE IF NOT EXISTS mfs_accounts (
-  id TEXT PRIMARY KEY,
-  shop_id TEXT NOT NULL,
-  provider TEXT NOT NULL,
-  account_name TEXT NOT NULL,
-  agent_number TEXT,
-  balance NUMERIC DEFAULT 0,
-  commission_earned_today NUMERIC DEFAULT 0,
-  cash_in_today NUMERIC DEFAULT 0,
-  cash_out_today NUMERIC DEFAULT 0,
-  color TEXT
-);
-
-INSERT INTO mfs_accounts (id, shop_id, provider, account_name, agent_number, balance, color)
-VALUES
-  ('mfs-bkash-bdc', 'bdc', 'BKASH', 'বিকাশ এজেন্ট', '01309369789', 15000, '#E2136E'),
-  ('mfs-nagad-bdc', 'bdc', 'NAGAD', 'নগদ এজেন্ট', '01309369789', 10000, '#F7941D'),
-  ('mfs-rocket-bdc', 'bdc', 'ROCKET', 'রকেট এজেন্ট', '01309369789', 5000, '#8C3494')
-ON CONFLICT (id) DO NOTHING;`}
+                      {getRegistrationSql()}
                     </pre>
                     <button
                       type="button"
                       onClick={() => {
-                        const sqlText = `-- ১. শপ সেটিংস টেবিল
-CREATE TABLE IF NOT EXISTS shop_settings (
-  shop_id TEXT PRIMARY KEY,
-  shop_name TEXT NOT NULL,
-  shop_subtitle TEXT,
-  owner_name TEXT,
-  phone1 TEXT,
-  phone2 TEXT,
-  address TEXT,
-  email TEXT,
-  opening_cash_balance NUMERIC DEFAULT 0,
-  receipt_footer_note TEXT,
-  receipt_type TEXT DEFAULT 'standard',
-  admin_pin TEXT DEFAULT '1235',
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- ২. ব্রাদার্স ডিজিটাল সেন্টার (bdc) ইনসার্ট
-INSERT INTO shop_settings (
-  shop_id, shop_name, shop_subtitle, owner_name,
-  phone1, phone2, address, email, opening_cash_balance,
-  receipt_footer_note, receipt_type, admin_pin, updated_at
-) VALUES (
-  'bdc',
-  'ব্রাদার্স ডিজিটাল সেন্টার',
-  'Brothers Digital Center & Cyber Point',
-  'শাহরিয়ার ইমন',
-  '01309369789',
-  '01518947904',
-  'বটতলা বাজার, মদন, নেত্রকোনা',
-  'brothersdigital.bd@gmail.com',
-  15000,
-  'আমাদের সেবা গ্রহণ করার জন্য ধন্যবাদ!',
-  'standard',
-  '1235',
-  NOW()
-) ON CONFLICT (shop_id) DO UPDATE SET
-  shop_name = EXCLUDED.shop_name,
-  owner_name = EXCLUDED.owner_name,
-  phone1 = EXCLUDED.phone1,
-  admin_pin = EXCLUDED.admin_pin,
-  updated_at = NOW();
-
--- ৩. এমএফএস একাউন্টস টেবিল
-CREATE TABLE IF NOT EXISTS mfs_accounts (
-  id TEXT PRIMARY KEY,
-  shop_id TEXT NOT NULL,
-  provider TEXT NOT NULL,
-  account_name TEXT NOT NULL,
-  agent_number TEXT,
-  balance NUMERIC DEFAULT 0,
-  commission_earned_today NUMERIC DEFAULT 0,
-  cash_in_today NUMERIC DEFAULT 0,
-  cash_out_today NUMERIC DEFAULT 0,
-  color TEXT
-);
-
-INSERT INTO mfs_accounts (id, shop_id, provider, account_name, agent_number, balance, color)
-VALUES
-  ('mfs-bkash-bdc', 'bdc', 'BKASH', 'বিকাশ এজেন্ট', '01309369789', 15000, '#E2136E'),
-  ('mfs-nagad-bdc', 'bdc', 'NAGAD', 'নগদ এজেন্ট', '01309369789', 10000, '#F7941D'),
-  ('mfs-rocket-bdc', 'bdc', 'ROCKET', 'রকেট এজেন্ট', '01309369789', 5000, '#8C3494')
-ON CONFLICT (id) DO NOTHING;`;
-                        navigator.clipboard.writeText(sqlText);
+                        navigator.clipboard.writeText(getRegistrationSql());
                         setSqlCopied(true);
                         setTimeout(() => setSqlCopied(false), 2500);
                       }}
@@ -1053,7 +929,7 @@ ON CONFLICT (id) DO NOTHING;`;
                   required
                   value={regShopName}
                   onChange={(e) => handleShopNameChange(e.target.value)}
-                  placeholder="যেমন: ব্রাদার্স ডিজিটাল সেন্টার / নিউ ঢাকা টেলিকম"
+                  placeholder="যেমন: নিউ ডিজিটাল টেলিকম"
                   className="w-full px-3.5 py-2.5 bg-slate-800/90 border border-slate-700 rounded-xl text-sm font-bold text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-hidden"
                 />
               </div>
@@ -1081,7 +957,7 @@ ON CONFLICT (id) DO NOTHING;`;
                     required
                     value={regOwnerName}
                     onChange={(e) => setRegOwnerName(e.target.value)}
-                    placeholder="যেমন: শাহরিয়ার ইমন"
+                    placeholder="যেমন: মোঃ রফিকুল ইসলাম"
                     className="w-full px-3.5 py-2 bg-slate-800/90 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-hidden"
                   />
                 </div>
@@ -1095,7 +971,7 @@ ON CONFLICT (id) DO NOTHING;`;
                     required
                     value={regPhone}
                     onChange={(e) => setRegPhone(e.target.value)}
-                    placeholder="যেমন: 01309369789"
+                    placeholder="যেমন: 01700000000"
                     className="w-full px-3.5 py-2 bg-slate-800/90 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-hidden"
                   />
                 </div>
@@ -1110,7 +986,7 @@ ON CONFLICT (id) DO NOTHING;`;
                   required
                   value={regAddress}
                   onChange={(e) => setRegAddress(e.target.value)}
-                  placeholder="যেমন: বটতলা বাজার, মদন, নেত্রকোনা"
+                  placeholder="যেমন: কলেজ রোড, সদর"
                   className="w-full px-3.5 py-2 bg-slate-800/90 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-hidden"
                 />
               </div>
@@ -1267,7 +1143,7 @@ ON CONFLICT (id) DO NOTHING;`;
                   required
                   value={regShopId}
                   onChange={(e) => setRegShopId(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '-'))}
-                  placeholder="যেমন: brothers-digital"
+                  placeholder="যেমন: my-shop-id"
                   className="w-full px-3.5 py-2 bg-slate-800/90 border border-slate-700 rounded-xl text-xs font-mono font-bold text-emerald-300 placeholder-slate-500 focus:border-emerald-500 focus:outline-hidden"
                 />
                 <p className="text-[10px] text-slate-400 mt-1">
@@ -1285,7 +1161,7 @@ ON CONFLICT (id) DO NOTHING;`;
                     required
                     value={regPin}
                     onChange={(e) => setRegPin(e.target.value)}
-                    placeholder="যেমন: 1235"
+                    placeholder="আপনার পছন্দের ৪-ডিজিট পিন"
                     className="w-full px-3.5 py-2 bg-slate-800/90 border border-slate-700 rounded-xl text-xs font-bold text-white placeholder-slate-500 tracking-wider focus:border-emerald-500 focus:outline-hidden"
                   />
                 </div>

@@ -1,6 +1,8 @@
 {
-  "name": "Brothers Digital Center POS",
+  "name": "Remix Brothers Digital Center POS",
   "description": "Complete Point of Sale (POS) and shop management system for Brothers Digital Center with daily transactions, customer due ledger, MFS banking, and inventory tracking.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

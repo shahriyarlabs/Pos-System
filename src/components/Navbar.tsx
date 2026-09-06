@@ -6,7 +6,6 @@ import {
   Package,
   FileText,
   PlusCircle,
-  Settings,
   Search,
   Server,
   Calculator,
@@ -91,12 +90,6 @@ export const Navbar: React.FC<NavbarProps> = ({
       labelBn: 'রিপোর্ট ও ক্যাশশিট',
       labelEn: 'Reports',
       icon: FileText,
-    },
-    {
-      id: 'admin',
-      labelBn: 'শপ সেটিংস ও ডাটাবেজ',
-      labelEn: 'Shop & DB',
-      icon: Settings,
     },
   ];
 

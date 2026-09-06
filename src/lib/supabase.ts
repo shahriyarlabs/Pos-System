@@ -1,24 +1,35 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Customer, InventoryItem, MFSAccount, MfsProvider, PaymentMethod, ShopSettings, SupabaseConfig, Transaction } from '../types';
+import { Customer, InventoryItem, MFSAccount, MfsProvider, PaymentMethod, ShopSettings, SupabaseConfig, Transaction, TransactionType } from '../types';
 
 let cachedClient: SupabaseClient | null = null;
 let currentUrl = '';
 let currentKey = '';
 
 const CONFIG_KEY = 'bdc_supabase_config';
-export const DEFAULT_SUPABASE_URL = 'https://sjudmshppklwhwgivnzw.supabase.co';
-export const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_YhEUvRLOVOA5pPTLiAHn1A_3Ye1djfx';
+export const DEFAULT_SUPABASE_URL = '';
+export const DEFAULT_SUPABASE_ANON_KEY = '';
 
 export function getStoredSupabaseConfig(): SupabaseConfig {
-  const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
-  const envKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
+  const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
+  const envKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
 
   try {
     const raw = localStorage.getItem(CONFIG_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      const url = (parsed.url || envUrl || DEFAULT_SUPABASE_URL).trim();
-      const anonKey = (parsed.anonKey || envKey || DEFAULT_SUPABASE_ANON_KEY).trim();
+      // If the old hardcoded default project was stored in local cache, discard it
+      if (parsed.url === 'https://sjudmshppklwhwgivnzw.supabase.co') {
+        localStorage.removeItem(CONFIG_KEY);
+        return {
+          url: '',
+          anonKey: '',
+          isConnected: false,
+          lastSyncTime: null,
+          autoSync: true,
+        };
+      }
+      const url = (parsed.url || envUrl || '').trim();
+      const anonKey = (parsed.anonKey || envKey || '').trim();
       return {
         url,
         anonKey,
@@ -29,8 +40,8 @@ export function getStoredSupabaseConfig(): SupabaseConfig {
     }
   } catch {}
 
-  const url = (envUrl || DEFAULT_SUPABASE_URL).trim();
-  const anonKey = (envKey || DEFAULT_SUPABASE_ANON_KEY).trim();
+  const url = (envUrl || '').trim();
+  const anonKey = (envKey || '').trim();
   return {
     url,
     anonKey,
@@ -117,6 +128,170 @@ export async function testSupabaseConnection(
   }
 }
 
+// Universal Date & Time Formatters for DB Schema
+function formatTrxDate(ts?: string): string {
+  try {
+    const d = ts ? new Date(ts) : new Date();
+    if (!isNaN(d.getTime())) {
+      return d.toISOString().split('T')[0];
+    }
+  } catch {}
+  return new Date().toISOString().split('T')[0];
+}
+
+function formatTrxTime(ts?: string): string {
+  try {
+    const d = ts ? new Date(ts) : new Date();
+    if (!isNaN(d.getTime())) {
+      return d.toTimeString().split(' ')[0];
+    }
+  } catch {}
+  return new Date().toTimeString().split(' ')[0];
+}
+
+// Columns that may not exist in the database table schema - automatically stripped if not present
+const unsupportedTrxColumns = new Set<string>([
+  'linked_inventory_id',
+  'payment_method_label_bn',
+  'timestamp',
+]);
+
+/**
+ * Universal mapper from frontend Transaction to the Supabase database table columns.
+ * Compatible with both the user's existing DB schema and any extended schemas.
+ */
+export function mapTransactionToDbRow(t: Transaction, shopKey: string): Record<string, any> {
+  const isDue = t.paymentMethod === 'DUE';
+  const amount = Number(t.amount || 0);
+  const dueAmount = isDue ? amount : 0;
+  const amountPaid = isDue ? 0 : amount;
+  const mfsProvider = ['BKASH', 'NAGAD', 'ROCKET'].includes(t.paymentMethod) ? t.paymentMethod : null;
+
+  return {
+    id: t.id,
+    shop_id: shopKey,
+    invoice_no: t.invoiceNo,
+    date: formatTrxDate(t.timestamp),
+    time: formatTrxTime(t.timestamp),
+    created_at: t.timestamp || new Date().toISOString(),
+    type: t.type,
+    category: t.category,
+    category_label_bn: t.categoryLabelBn,
+    category_label_en: t.categoryLabelEn || t.categoryLabelBn,
+    service_id: t.linkedInventoryId || null,
+    amount: amount,
+    fee_or_cost: 0,
+    profit: amount,
+    payment_method: t.paymentMethod,
+    mfs_provider: mfsProvider,
+    customer_id: t.customerId || null,
+    customer_name: t.customerName || null,
+    customer_phone: t.customerPhone || null,
+    is_due: isDue,
+    due_amount: dueAmount,
+    amount_paid: amountPaid,
+    note: t.note || null,
+    status: 'COMPLETED',
+  };
+}
+
+/**
+ * Inserts a transaction row safely. Automatically detects missing columns in the live
+ * table schema cache, strips them, and retries seamlessly.
+ */
+export async function safeInsertTransactionRow(
+  client: SupabaseClient,
+  row: Record<string, any>
+): Promise<void> {
+  const payload = { ...row };
+  for (const col of unsupportedTrxColumns) {
+    delete payload[col];
+  }
+
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const { error } = await client.from('transactions').insert(payload);
+    if (!error) return;
+
+    // Pattern 1: PostgREST error "Could not find the 'xyz' column of 'transactions' in the schema cache"
+    const match = error.message.match(/Could not find the '([^']+)' column of 'transactions'/i);
+    if (match && match[1]) {
+      const missingCol = match[1];
+      unsupportedTrxColumns.add(missingCol);
+      delete payload[missingCol];
+      continue;
+    }
+
+    // Pattern 2: column xyz does not exist
+    const colMatch = error.message.match(/column ["']?([a-zA-Z0-9_]+)["']? does not exist/i);
+    if (colMatch && colMatch[1]) {
+      const missingCol = colMatch[1];
+      unsupportedTrxColumns.add(missingCol);
+      delete payload[missingCol];
+      continue;
+    }
+
+    // Pattern 3: relation transactions does not exist
+    const relMatch = error.message.match(/column ([a-zA-Z0-9_]+) of relation transactions does not exist/i);
+    if (relMatch && relMatch[1]) {
+      const missingCol = relMatch[1];
+      unsupportedTrxColumns.add(missingCol);
+      delete payload[missingCol];
+      continue;
+    }
+
+    throw new Error(`লেনদেন সংরক্ষণ করা যায়নি: ${error.message}`);
+  }
+}
+
+/**
+ * Bulk upserts transaction rows safely without unsupported columns.
+ */
+export async function safeUpsertTransactionRows(
+  client: SupabaseClient,
+  rows: Record<string, any>[]
+): Promise<void> {
+  if (!rows || rows.length === 0) return;
+
+  let currentRows = rows.map((r) => {
+    const copy = { ...r };
+    for (const col of unsupportedTrxColumns) {
+      delete copy[col];
+    }
+    return copy;
+  });
+
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const { error } = await client.from('transactions').upsert(currentRows);
+    if (!error) return;
+
+    const match = error.message.match(/Could not find the '([^']+)' column of 'transactions'/i);
+    if (match && match[1]) {
+      const missingCol = match[1];
+      unsupportedTrxColumns.add(missingCol);
+      currentRows = currentRows.map((r) => {
+        const copy = { ...r };
+        delete copy[missingCol];
+        return copy;
+      });
+      continue;
+    }
+
+    const colMatch = error.message.match(/column ["']?([a-zA-Z0-9_]+)["']? does not exist/i);
+    if (colMatch && colMatch[1]) {
+      const missingCol = colMatch[1];
+      unsupportedTrxColumns.add(missingCol);
+      currentRows = currentRows.map((r) => {
+        const copy = { ...r };
+        delete copy[missingCol];
+        return copy;
+      });
+      continue;
+    }
+
+    throw new Error(`Transactions sync failed: ${error.message}`);
+  }
+}
+
 // Push local data to Supabase (isolated by shopKey)
 export async function pushAllToSupabase(
   client: SupabaseClient,
@@ -127,9 +302,13 @@ export async function pushAllToSupabase(
     mfsAccounts: MFSAccount[];
     settings?: ShopSettings;
   },
-  shopKey: string = 'brothers-digital'
+  shopKey: string
 ): Promise<{ success: boolean; message: string }> {
   try {
+    if (!shopKey) {
+      return { success: false, message: 'শপ আইডি পাওয়া যায়নি' };
+    }
+
     // 1. Settings
     if (data.settings) {
       await client.from('shop_settings').upsert({
@@ -211,27 +390,8 @@ export async function pushAllToSupabase(
 
     // 5. Transactions
     if (data.transactions.length > 0) {
-      const { error: trxErr } = await client.from('transactions').upsert(
-        data.transactions.map((t) => ({
-          id: t.id,
-          shop_id: shopKey,
-          invoice_no: t.invoiceNo,
-          type: t.type,
-          category: t.category,
-          category_label_bn: t.categoryLabelBn,
-          category_label_en: t.categoryLabelEn,
-          amount: t.amount,
-          payment_method: t.paymentMethod,
-          payment_method_label_bn: t.paymentMethodLabelBn,
-          customer_name: t.customerName || null,
-          customer_phone: t.customerPhone || null,
-          customer_id: t.customerId || null,
-          linked_inventory_id: t.linkedInventoryId || null,
-          note: t.note || null,
-          timestamp: t.timestamp,
-        }))
-      );
-      if (trxErr) throw new Error(`Transactions sync failed: ${trxErr.message}`);
+      const rows = data.transactions.map((t) => mapTransactionToDbRow(t, shopKey));
+      await safeUpsertTransactionRows(client, rows);
     }
 
     return { success: true, message: 'সকল ডেটা সফলভাবে Supabase ক্লাউডে সিঙ্ক করা হয়েছে!' };
@@ -243,7 +403,7 @@ export async function pushAllToSupabase(
 // Pull cloud data from Supabase for a specific shop
 export async function pullAllFromSupabase(
   client: SupabaseClient,
-  shopKey: string = 'brothers-digital'
+  shopKey: string
 ): Promise<{
   success: boolean;
   message?: string;
@@ -256,26 +416,39 @@ export async function pullAllFromSupabase(
   };
 }> {
   try {
+    if (!shopKey || !shopKey.trim()) {
+      return {
+        success: true,
+        data: {
+          transactions: [],
+          customers: [],
+          inventory: [],
+          mfsAccounts: [],
+        },
+      };
+    }
+
+    const cleanKey = shopKey.trim();
+
     const [trxRes, custRes, invRes, mfsRes, setRes] = await Promise.all([
       client
         .from('transactions')
         .select('*')
-        .or(`shop_id.eq.${shopKey},shop_id.is.null`)
-        .order('timestamp', { ascending: false }),
+        .eq('shop_id', cleanKey),
       client
         .from('customers')
         .select('*')
-        .or(`shop_id.eq.${shopKey},shop_id.is.null`)
+        .eq('shop_id', cleanKey)
         .order('name'),
       client
         .from('inventory_items')
         .select('*')
-        .or(`shop_id.eq.${shopKey},shop_id.is.null`)
+        .eq('shop_id', cleanKey)
         .order('name_bn'),
       client
         .from('mfs_accounts')
         .select('*')
-        .or(`shop_id.eq.${shopKey},shop_id.is.null`),
+        .eq('shop_id', cleanKey),
       client
         .from('shop_settings')
         .select('*')
@@ -332,24 +505,55 @@ export async function pullAllFromSupabase(
       shopId: m.shop_id || shopKey,
     }));
 
-    const transactions: Transaction[] = (trxRes.data || []).map((t: any) => ({
-      id: t.id,
-      invoiceNo: t.invoice_no,
-      type: t.type,
-      category: t.category,
-      categoryLabelBn: t.category_label_bn,
-      categoryLabelEn: t.category_label_en,
-      amount: Number(t.amount || 0),
-      paymentMethod: t.payment_method,
-      paymentMethodLabelBn: t.payment_method_label_bn,
-      customerName: t.customer_name || undefined,
-      customerPhone: t.customer_phone || undefined,
-      customerId: t.customer_id || undefined,
-      linkedInventoryId: t.linked_inventory_id || undefined,
-      note: t.note || undefined,
-      timestamp: t.timestamp,
-      shopId: t.shop_id || shopKey,
-    }));
+    const transactions: Transaction[] = (trxRes.data || []).map((t: any) => {
+      let ts = t.timestamp || t.created_at;
+      if (!ts && t.date) {
+        ts = t.time ? `${t.date}T${t.time}` : `${t.date}T00:00:00`;
+      }
+      if (!ts) {
+        ts = new Date().toISOString();
+      }
+
+      const method = (t.payment_method || 'CASH') as PaymentMethod;
+      const methodLabelBn =
+        t.payment_method_label_bn ||
+        (method === 'CASH'
+          ? 'ক্যাশ নগদ'
+          : method === 'BKASH'
+          ? 'বিকাশ'
+          : method === 'NAGAD'
+          ? 'নগদ'
+          : method === 'ROCKET'
+          ? 'রকেট'
+          : method === 'DUE'
+          ? 'বাকি'
+          : method);
+
+      return {
+        id: t.id,
+        invoiceNo: t.invoice_no || `INV-${t.id?.slice(-6)}`,
+        type: (t.type as TransactionType) || 'INCOME',
+        category: t.category,
+        categoryLabelBn: t.category_label_bn || t.category,
+        categoryLabelEn: t.category_label_en || t.category_label_bn || t.category,
+        amount: Number(t.amount || 0),
+        paymentMethod: method,
+        paymentMethodLabelBn: methodLabelBn,
+        customerName: t.customer_name || undefined,
+        customerPhone: t.customer_phone || undefined,
+        customerId: t.customer_id || undefined,
+        linkedInventoryId: t.linked_inventory_id || t.service_id || undefined,
+        note: t.note || undefined,
+        timestamp: ts,
+        shopId: t.shop_id || shopKey,
+      };
+    });
+
+    transactions.sort((a, b) => {
+      const timeA = new Date(a.timestamp).getTime();
+      const timeB = new Date(b.timestamp).getTime();
+      return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+    });
 
     let settings: Partial<ShopSettings> | undefined = undefined;
     if (setRes.data) {
@@ -560,28 +764,8 @@ export async function createSupabaseTransaction(
   };
 
   // 1. Insert transaction into Supabase
-  const { error: trxErr } = await client.from('transactions').insert({
-    id: newTrx.id,
-    shop_id: shopKey,
-    invoice_no: newTrx.invoiceNo,
-    type: newTrx.type,
-    category: newTrx.category,
-    category_label_bn: newTrx.categoryLabelBn,
-    category_label_en: newTrx.categoryLabelEn || newTrx.categoryLabelBn,
-    amount: newTrx.amount,
-    payment_method: newTrx.paymentMethod,
-    payment_method_label_bn: newTrx.paymentMethodLabelBn,
-    customer_name: newTrx.customerName || null,
-    customer_phone: newTrx.customerPhone || null,
-    customer_id: newTrx.customerId || null,
-    linked_inventory_id: newTrx.linkedInventoryId || null,
-    note: newTrx.note || null,
-    timestamp: newTrx.timestamp,
-  });
-
-  if (trxErr) {
-    throw new Error(`লেনদেন সংরক্ষণ করা যায়নি: ${trxErr.message}`);
-  }
+  const dbRow = mapTransactionToDbRow(newTrx, shopKey);
+  await safeInsertTransactionRow(client, dbRow);
 
   // 2. If item linked, update inventory stock
   if (newTrx.linkedInventoryId) {
@@ -703,25 +887,9 @@ export async function recordSupabaseDuePayment(
     shopId: shopKey,
   };
 
-  const { error: trxErr } = await client.from('transactions').insert({
-    id: trxRecord.id,
-    shop_id: shopKey,
-    invoice_no: trxRecord.invoiceNo,
-    type: trxRecord.type,
-    category: trxRecord.category,
-    category_label_bn: trxRecord.categoryLabelBn,
-    category_label_en: trxRecord.categoryLabelEn,
-    amount: trxRecord.amount,
-    payment_method: trxRecord.paymentMethod,
-    payment_method_label_bn: trxRecord.paymentMethodLabelBn,
-    customer_id: customerId,
-    customer_name: custRow.name,
-    customer_phone: custRow.phone,
-    timestamp: trxRecord.timestamp,
-    note: trxRecord.note,
-  });
-
-  if (trxErr) throw new Error(`বকেয়া আদায় সংরক্ষণ ব্যর্থ: ${trxErr.message}`);
+  // 1. Insert due repayment transaction
+  const dbRow = mapTransactionToDbRow(trxRecord, shopKey);
+  await safeInsertTransactionRow(client, dbRow);
 
   // 2. Update customer record
   const newDue = Math.max(0, Number(custRow.current_due || 0) - amount);
@@ -923,21 +1091,9 @@ export async function executeSupabaseMfsTransaction(
     shopId: shopKey,
   };
 
-  await client.from('transactions').insert({
-    id: trxRecord.id,
-    shop_id: shopKey,
-    invoice_no: trxRecord.invoiceNo,
-    type: trxRecord.type,
-    category: trxRecord.category,
-    category_label_bn: trxRecord.categoryLabelBn,
-    category_label_en: trxRecord.categoryLabelEn,
-    amount: trxRecord.amount,
-    payment_method: trxRecord.paymentMethod,
-    payment_method_label_bn: trxRecord.paymentMethodLabelBn,
-    customer_phone: params.customerPhone,
-    timestamp: trxRecord.timestamp,
-    note: trxRecord.note,
-  });
+  // 2. Insert transaction
+  const dbRow = mapTransactionToDbRow(trxRecord, shopKey);
+  await safeInsertTransactionRow(client, dbRow);
 
   broadcastLocalChange(shopKey);
   return { success: true, transaction: trxRecord };
@@ -1243,9 +1399,9 @@ export async function loginShopFromSupabase(
       return false;
     });
 
-    // Fallback: If only 1 shop exists in this database and user typed "admin" / "shop" / "bdc" / "brothers-digital"
+    // Fallback: If only 1 shop exists in this database and user typed generic admin/pos
     if (!matchedShop && allShops.length === 1) {
-      if (['admin', 'bdc', 'shop', 'brothers-digital', 'pos', 'owner'].includes(cleanId) || rawInput === '') {
+      if (['admin', 'shop', 'pos', 'owner'].includes(cleanId) || rawInput === '') {
         matchedShop = allShops[0];
       }
     }
@@ -1259,11 +1415,8 @@ export async function loginShopFromSupabase(
     }
 
     const shopData = matchedShop;
-    const expectedPin = String(shopData.admin_pin || '1235').trim();
-    const isPinCorrect =
-      enteredPin === expectedPin ||
-      enteredPin === '1235' ||
-      enteredPin === '1234';
+    const expectedPin = String(shopData.admin_pin || '').trim();
+    const isPinCorrect = enteredPin === expectedPin;
 
     if (!isPinCorrect) {
       return {
@@ -1376,7 +1529,7 @@ export async function deleteAllFromSupabase(
 
 // Ready-to-use Supabase SQL setup script with Multi-Device Shop Isolation
 export const SUPABASE_SETUP_SQL = `-- ==========================================
--- Brothers Digital Center - Multi-Device Schema
+-- Multi-Shop POS Schema
 -- Paste and Run in Supabase SQL Editor (SQL Editor -> New Query -> Run)
 -- ==========================================
 
@@ -1394,13 +1547,14 @@ CREATE TABLE IF NOT EXISTS shop_settings (
     receipt_footer_note TEXT,
     receipt_type TEXT DEFAULT 'standard',
     admin_pin TEXT DEFAULT '1234',
+    logo_url TEXT,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 2. Customers Table (বকেয়া খাতা)
 CREATE TABLE IF NOT EXISTS customers (
     id TEXT PRIMARY KEY,
-    shop_id TEXT NOT NULL DEFAULT 'brothers-digital',
+    shop_id TEXT NOT NULL,
     name TEXT NOT NULL,
     phone TEXT NOT NULL,
     address TEXT,
@@ -1415,7 +1569,7 @@ CREATE TABLE IF NOT EXISTS customers (
 -- 3. Inventory Items Table (স্টক ও ইনভেন্টরি)
 CREATE TABLE IF NOT EXISTS inventory_items (
     id TEXT PRIMARY KEY,
-    shop_id TEXT NOT NULL DEFAULT 'brothers-digital',
+    shop_id TEXT NOT NULL,
     code TEXT NOT NULL,
     name_bn TEXT NOT NULL,
     name_en TEXT NOT NULL,
@@ -1432,7 +1586,7 @@ CREATE TABLE IF NOT EXISTS inventory_items (
 -- 4. MFS Accounts Table (মোবাইল ব্যাংকিং ওয়ালেট)
 CREATE TABLE IF NOT EXISTS mfs_accounts (
     id TEXT PRIMARY KEY,
-    shop_id TEXT NOT NULL DEFAULT 'brothers-digital',
+    shop_id TEXT NOT NULL,
     provider TEXT NOT NULL,
     account_name TEXT NOT NULL,
     agent_number TEXT,
@@ -1443,24 +1597,34 @@ CREATE TABLE IF NOT EXISTS mfs_accounts (
     color TEXT DEFAULT '#10b981'
 );
 
--- 5. Transactions Table (দৈনিক লেনদেন)
+-- 5. Transactions Table (দৈনিক হিসাব ও লেনদেন)
 CREATE TABLE IF NOT EXISTS transactions (
     id TEXT PRIMARY KEY,
-    shop_id TEXT NOT NULL DEFAULT 'brothers-digital',
-    invoice_no TEXT NOT NULL UNIQUE,
+    shop_id TEXT NOT NULL,
+    invoice_no TEXT NOT NULL,
+    date TEXT NOT NULL,
+    time TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
     type TEXT NOT NULL,
     category TEXT NOT NULL,
     category_label_bn TEXT NOT NULL,
     category_label_en TEXT NOT NULL,
+    service_id TEXT,
     amount NUMERIC NOT NULL,
+    fee_or_cost NUMERIC DEFAULT 0,
+    profit NUMERIC DEFAULT 0,
     payment_method TEXT NOT NULL,
-    payment_method_label_bn TEXT NOT NULL,
+    mfs_provider TEXT,
+    customer_id TEXT,
     customer_name TEXT,
     customer_phone TEXT,
-    customer_id TEXT,
-    linked_inventory_id TEXT,
+    is_due BOOLEAN DEFAULT false,
+    due_amount NUMERIC DEFAULT 0,
+    amount_paid NUMERIC DEFAULT 0,
     note TEXT,
-    timestamp TIMESTAMPTZ DEFAULT NOW()
+    status TEXT DEFAULT 'COMPLETED',
+    operator_id TEXT,
+    operator_name TEXT
 );
 
 -- Indexes for blazing fast real-time queries
@@ -1509,7 +1673,7 @@ export const SUPABASE_CLEANUP_SQL = `-- ========================================
 TRUNCATE TABLE transactions, customers, inventory_items, mfs_accounts, shop_settings RESTART IDENTITY CASCADE;
 `;
 
-export const SUPABASE_DELETE_SHOP_SQL = (shopKey: string = 'brothers-digital') => `-- ==============================================================================
+export const SUPABASE_DELETE_SHOP_SQL = (shopKey: string) => `-- ==============================================================================
 -- ⚠️ নির্দিষ্ট দোকানের ডেটা মুছে ফেলার স্ক্রিপ্ট (Shop ID: ${shopKey})
 -- ==============================================================================
 

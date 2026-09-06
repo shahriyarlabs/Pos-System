@@ -6,7 +6,6 @@ import { CustomerDueLedger } from './components/CustomerDueLedger';
 import { MobileBankingLedger } from './components/MobileBankingLedger';
 import { InventoryManager } from './components/InventoryManager';
 import { ReportsAndReceipts } from './components/ReportsAndReceipts';
-import { AdminPanel } from './components/AdminPanel';
 import { GlobalSearchModal } from './components/GlobalSearchModal';
 import { CalculationAuditModal } from './components/CalculationAuditModal';
 import { DatabaseConnectModal } from './components/DatabaseConnectModal';
@@ -837,30 +836,6 @@ function isEqualDataList(prevList: any[], nextList: any[]): boolean {
             onCloseReceipt={() => setActiveReceiptTransaction(null)}
             onSelectReceipt={(trx) => setActiveReceiptTransaction(trx)}
             settings={settings}
-          />
-        )}
-
-        {activeTab === 'admin' && (
-          <AdminPanel
-            settings={settings}
-            onUpdateSettings={handleUpdateSettings}
-            supabaseConfig={supabaseConfig}
-            onUpdateSupabaseConfig={handleConfigSaved}
-            transactions={transactions}
-            customers={customers}
-            inventory={inventory}
-            mfsAccounts={mfsAccounts}
-            auditLogs={auditLogs}
-            onRestoreAllData={(data) => {
-              if (data.transactions) setTransactions(data.transactions);
-              if (data.customers) setCustomers(data.customers);
-              if (data.inventory) setInventory(data.inventory);
-              if (data.mfsAccounts) setMfsAccounts(data.mfsAccounts);
-              if (data.settings) handleUpdateSettings(data.settings);
-            }}
-            onClearAllData={handleClearAllData}
-            onDataSyncedFromCloud={() => loadDatabaseData()}
-            onLogout={handleLogout}
           />
         )}
       </main>
