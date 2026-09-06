@@ -135,7 +135,7 @@ export const CounterLockScreen: React.FC<CounterLockScreenProps> = ({
 
             {/* Switch Shop or Pair */}
             <div className="mt-6 pt-4 border-t border-slate-800 w-full flex items-center justify-between text-xs text-slate-400">
-              <span className="font-mono text-[11px]">শপ: {settings.shopKey || 'brothers-digital'}</span>
+              <span className="font-mono text-[11px]">শপ: {settings.shopKey || 'bdc'}</span>
               <button
                 type="button"
                 onClick={() => setShowPairForm(true)}
@@ -155,7 +155,7 @@ export const CounterLockScreen: React.FC<CounterLockScreenProps> = ({
                 required
                 value={inputShopKey}
                 onChange={(e) => setInputShopKey(e.target.value)}
-                placeholder="যেমন: brothers-digital"
+                placeholder="যেমন: bdc"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-mono focus:outline-hidden focus:border-emerald-500"
               />
             </div>

@@ -69,7 +69,7 @@ const DEFAULT_SETTINGS: ShopSettings = {
   adminUsername: 'admin',
   adminPassword: '1235',
   adminPin: '1235',
-  shopKey: 'brothers-digital',
+  shopKey: 'bdc',
   isPinProtectionEnabled: true,
   requireLoginForEntireApp: true,
 };
@@ -122,89 +122,129 @@ export default function App() {
   // Realtime subscription cleanup ref
   const unsubscribeRealtimeRef = useRef<(() => void) | null>(null);
 
-  // 1. Fetch live data from Supabase
-  const loadDatabaseData = useCallback(async (configToUse?: SupabaseConfig, targetShopKey?: string) => {
-    const activeConf = configToUse || supabaseConfig;
-    if (!activeConf.url || !activeConf.anonKey) {
-      return;
-    }
+  // 1. Fetch live data from Supabase (supports silent background sync without UI interruptions)
+  const loadDatabaseData = useCallback(
+    async (configToUse?: SupabaseConfig, targetShopKey?: string, isSilent: boolean = false) => {
+      const activeConf = configToUse || supabaseConfig;
+      if (!activeConf.url || !activeConf.anonKey) {
+        return;
+      }
 
-    const client = getSupabaseClient(activeConf.url, activeConf.anonKey);
-    if (!client) {
-      setDbError('Supabase ক্লায়েন্ট তৈরি করা যায়নি। URL ও Key চেক করুন।');
-      return;
-    }
-
-    setIsDataLoading(true);
-    setDbError(null);
-
-    try {
-      const shopKey = targetShopKey || settings.shopKey || 'brothers-digital';
-      const result = await pullAllFromSupabase(client, shopKey);
-
-      if (result.success && result.data) {
-        setTransactions(result.data.transactions || []);
-        setCustomers(result.data.customers || []);
-        setInventory(result.data.inventory || []);
-
-        if (result.data.mfsAccounts && result.data.mfsAccounts.length > 0) {
-          setMfsAccounts(result.data.mfsAccounts);
+      const client = getSupabaseClient(activeConf.url, activeConf.anonKey);
+      if (!client) {
+        if (!isSilent) {
+          setDbError('Supabase ক্লায়েন্ট তৈরি করা যায়নি। URL ও Key চেক করুন।');
         }
+        return;
+      }
 
-        if (result.data.settings) {
-          setSettings((prev) => ({ ...prev, ...result.data.settings }));
-        }
+      if (!isSilent) {
+        setIsDataLoading(true);
+      }
+      setDbError(null);
 
-        setSupabaseConfig((prev) => ({
-          ...prev,
-          isConnected: true,
-          lastSyncTime: new Date().toISOString(),
-        }));
-      } else {
-        if (result.message?.includes('does not exist')) {
-          setDbError('ডাটাবেজ টেবিল প্রস্তুত নয়। দয়া করে SQL স্ক্রিপ্টটি Supabase-এ রান করুন।');
+      try {
+        const shopKey = targetShopKey || currentUser?.shopId || settings.shopKey || 'bdc';
+        const result = await pullAllFromSupabase(client, shopKey);
+
+        if (result.success && result.data) {
+          setTransactions(result.data.transactions || []);
+          setCustomers(result.data.customers || []);
+          setInventory(result.data.inventory || []);
+
+          if (result.data.mfsAccounts && result.data.mfsAccounts.length > 0) {
+            setMfsAccounts(result.data.mfsAccounts);
+          }
+
+          if (result.data.settings) {
+            setSettings((prev) => ({ ...prev, ...result.data.settings }));
+          }
+
+          setSupabaseConfig((prev) => ({
+            ...prev,
+            isConnected: true,
+            lastSyncTime: new Date().toISOString(),
+          }));
         } else {
-          setDbError(result.message || 'ডাটাবেজ থেকে তথ্য আনা যায়নি');
+          if (!isSilent) {
+            if (result.message?.includes('does not exist')) {
+              setDbError('ডাটাবেজ টেবিল প্রস্তুত নয়। দয়া করে SQL স্ক্রিপ্টটি Supabase-এ রান করুন।');
+            } else {
+              setDbError(result.message || 'ডাটাবেজ থেকে তথ্য আনা যায়নি');
+            }
+          }
+        }
+      } catch (err: any) {
+        if (!isSilent) {
+          setDbError(err.message || 'ডাটাবেজ লোডিং সমস্যা');
+        }
+      } finally {
+        if (!isSilent) {
+          setIsDataLoading(false);
         }
       }
-    } catch (err: any) {
-      setDbError(err.message || 'ডাটাবেজ লোডিং সমস্যা');
-    } finally {
-      setIsDataLoading(false);
-    }
-  }, [supabaseConfig, settings.shopKey]);
+    },
+    [supabaseConfig, settings.shopKey, currentUser?.shopId]
+  );
 
-  // 2. Setup Realtime Listener on active client
+  // 2. Setup 100% Automatic Realtime Sync: WebSocket + Auto Heartbeat + Focus / Visibility Sync
   useEffect(() => {
     if (unsubscribeRealtimeRef.current) {
       unsubscribeRealtimeRef.current();
       unsubscribeRealtimeRef.current = null;
     }
 
-    if (supabaseConfig.url && supabaseConfig.anonKey) {
-      const client = getSupabaseClient(supabaseConfig.url, supabaseConfig.anonKey);
-      if (client) {
-        const shopKey = settings.shopKey || 'brothers-digital';
-        unsubscribeRealtimeRef.current = subscribeToShopRealtime(client, shopKey, () => {
-          loadDatabaseData();
-        });
-      }
+    if (!supabaseConfig.url || !supabaseConfig.anonKey) {
+      return;
     }
+
+    const client = getSupabaseClient(supabaseConfig.url, supabaseConfig.anonKey);
+    if (!client) return;
+
+    const shopKey = currentUser?.shopId || settings.shopKey || 'bdc';
+
+    // A. Realtime WebSocket subscription (instant sub-second push from Supabase & cross-tab events)
+    unsubscribeRealtimeRef.current = subscribeToShopRealtime(client, shopKey, () => {
+      loadDatabaseData(undefined, undefined, true);
+    });
+
+    // B. Background Auto-Sync Heartbeat (Runs every 4 seconds silently)
+    // Guarantees all devices (PC, Android, iPhone) stay continuously synchronized without pressing refresh
+    const autoSyncInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        loadDatabaseData(undefined, undefined, true);
+      }
+    }, 4000);
+
+    // C. Instant auto-sync on tab switch, window focus, or network reconnect
+    const handleActiveTrigger = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        loadDatabaseData(undefined, undefined, true);
+      }
+    };
+
+    window.addEventListener('visibilitychange', handleActiveTrigger);
+    window.addEventListener('focus', handleActiveTrigger);
+    window.addEventListener('online', handleActiveTrigger);
 
     return () => {
       if (unsubscribeRealtimeRef.current) {
         unsubscribeRealtimeRef.current();
         unsubscribeRealtimeRef.current = null;
       }
+      clearInterval(autoSyncInterval);
+      window.removeEventListener('visibilitychange', handleActiveTrigger);
+      window.removeEventListener('focus', handleActiveTrigger);
+      window.removeEventListener('online', handleActiveTrigger);
     };
-  }, [supabaseConfig.url, supabaseConfig.anonKey, settings.shopKey, loadDatabaseData]);
+  }, [supabaseConfig.url, supabaseConfig.anonKey, settings.shopKey, currentUser?.shopId, loadDatabaseData]);
 
   // 3. Initial mount check
   useEffect(() => {
     const stored = getStoredSupabaseConfig();
     setSupabaseConfig(stored);
     if (stored.url && stored.anonKey) {
-      loadDatabaseData(stored);
+      loadDatabaseData(stored, currentUser?.shopId || settings.shopKey || 'bdc');
     }
   }, []);
 
@@ -306,7 +346,7 @@ export default function App() {
     }
 
     try {
-      const shopKey = settings.shopKey || 'brothers-digital';
+      const shopKey = currentUser?.shopId || settings.shopKey || 'bdc';
       const res = await createSupabaseTransaction(client, newTrxData, shopKey);
 
       if (res.success && res.transaction) {
@@ -358,7 +398,7 @@ export default function App() {
     }
 
     try {
-      const shopKey = settings.shopKey || 'brothers-digital';
+      const shopKey = currentUser?.shopId || settings.shopKey || 'bdc';
       await deleteSupabaseTransaction(client, id, shopKey);
       setTransactions((prev) => prev.filter((t) => t.id !== id));
       showToast('লেনদেন ডাটাবেজ থেকে মুছে ফেলা হয়েছে', 'info');
@@ -381,7 +421,7 @@ export default function App() {
     }
 
     try {
-      const shopKey = settings.shopKey || 'brothers-digital';
+      const shopKey = currentUser?.shopId || settings.shopKey || 'bdc';
       const res = await recordSupabaseDuePayment(client, customerId, amount, paymentMethod, note, shopKey);
 
       if (res.success && res.transaction) {
@@ -416,7 +456,7 @@ export default function App() {
     }
 
     try {
-      const shopKey = settings.shopKey || 'brothers-digital';
+      const shopKey = currentUser?.shopId || settings.shopKey || 'bdc';
       const res = await saveSupabaseCustomer(client, newCustData, shopKey);
       if (res.success && res.customer) {
         setCustomers((prev) => [res.customer, ...prev]);
@@ -443,7 +483,7 @@ export default function App() {
     }
 
     try {
-      const shopKey = settings.shopKey || 'brothers-digital';
+      const shopKey = currentUser?.shopId || settings.shopKey || 'bdc';
       const res = await executeSupabaseMfsTransaction(client, params, shopKey);
 
       if (res.success && res.transaction) {
@@ -479,7 +519,7 @@ export default function App() {
     }
 
     try {
-      const shopKey = settings.shopKey || 'brothers-digital';
+      const shopKey = currentUser?.shopId || settings.shopKey || 'bdc';
       await updateSupabaseMfsAccount(client, provider, newBalance, shopKey);
       setMfsAccounts((prev) =>
         prev.map((acc) => (acc.provider === provider ? { ...acc, balance: newBalance } : acc))
@@ -499,7 +539,7 @@ export default function App() {
     }
 
     try {
-      const shopKey = settings.shopKey || 'brothers-digital';
+      const shopKey = currentUser?.shopId || settings.shopKey || 'bdc';
       await restockSupabaseInventory(client, itemId, newQty, shopKey);
       setInventory((prev) =>
         prev.map((i) => (i.id === itemId ? { ...i, stockQuantity: newQty } : i))
@@ -523,7 +563,7 @@ export default function App() {
     }
 
     try {
-      const shopKey = settings.shopKey || 'brothers-digital';
+      const shopKey = currentUser?.shopId || settings.shopKey || 'bdc';
       const res = await saveSupabaseInventoryItem(
         client,
         {
@@ -549,7 +589,7 @@ export default function App() {
     if (!client) return;
 
     try {
-      const shopKey = newSettings.shopKey || 'brothers-digital';
+      const shopKey = newSettings.shopKey || currentUser?.shopId || settings.shopKey || 'bdc';
       await updateSupabaseSettings(client, newSettings, shopKey);
       showToast('দোকানের সেটিংস ডাটাবেজে সংরক্ষিত হয়েছে!');
     } catch (err: any) {
@@ -570,7 +610,7 @@ export default function App() {
     }
 
     try {
-      const shopKey = settings.shopKey || 'brothers-digital';
+      const shopKey = currentUser?.shopId || settings.shopKey || 'bdc';
       await deleteAllFromSupabase(client, shopKey);
       setTransactions([]);
       setCustomers([]);
@@ -644,6 +684,8 @@ export default function App() {
         onOpenDatabaseModal={() => setIsDatabaseModalOpen(true)}
         currentUser={currentUser}
         onLogout={handleLogout}
+        onRefreshData={() => loadDatabaseData()}
+        isDataLoading={isDataLoading}
       />
 
       {/* Database Connection Alert Bar if Not Connected */}
@@ -711,6 +753,8 @@ export default function App() {
             onNavigateToTab={setActiveTab}
             onOpenCalculationAudit={() => setIsAuditModalOpen(true)}
             onDeleteTransaction={handleDeleteTransaction}
+            onRefreshData={() => loadDatabaseData()}
+            isDataLoading={isDataLoading}
           />
         )}
 
@@ -788,7 +832,7 @@ export default function App() {
         currentConfig={supabaseConfig}
         onConfigSaved={handleConfigSaved}
         onDisconnect={handleDisconnectDatabase}
-        shopKey={settings.shopKey || 'brothers-digital'}
+        shopKey={currentUser?.shopId || settings.shopKey || 'bdc'}
         onUpdateShopKey={(key) => handleUpdateSettings({ ...settings, shopKey: key })}
       />
 

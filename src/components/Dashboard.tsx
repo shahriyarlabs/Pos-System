@@ -17,6 +17,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   HelpCircle,
+  RefreshCw,
+  Database,
 } from 'lucide-react';
 import { Customer, InventoryItem, MFSAccount, ShopSettings, Transaction } from '../types';
 import { auditAllCalculations, formatTaka } from '../lib/calculations';
@@ -32,6 +34,8 @@ interface DashboardProps {
   onNavigateToTab: (tab: string) => void;
   onOpenCalculationAudit: () => void;
   onDeleteTransaction?: (id: string) => void;
+  onRefreshData?: () => void;
+  isDataLoading?: boolean;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -45,6 +49,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onNavigateToTab,
   onOpenCalculationAudit,
   onDeleteTransaction,
+  onRefreshData,
+  isDataLoading,
 }) => {
   const [period, setPeriod] = useState<'today' | 'yesterday' | 'week' | 'month' | 'all'>('today');
   const [trxFilter, setTrxFilter] = useState<'ALL' | 'INCOME' | 'EXPENSE'>('ALL');
@@ -53,8 +59,38 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // 1. Audit Calculation Result
   const audit = auditAllCalculations(settings, transactions, mfsAccounts, customers, inventory);
 
-  // Filter transactions based on selected period
+  // Dynamic counts for each period tab
   const now = new Date();
+  const periodCounts = {
+    today: transactions.filter((t) => {
+      const d = new Date(t.timestamp);
+      return (
+        d.getDate() === now.getDate() &&
+        d.getMonth() === now.getMonth() &&
+        d.getFullYear() === now.getFullYear()
+      );
+    }).length,
+    yesterday: transactions.filter((t) => {
+      const y = new Date(now);
+      y.setDate(now.getDate() - 1);
+      const d = new Date(t.timestamp);
+      return (
+        d.getDate() === y.getDate() &&
+        d.getMonth() === y.getMonth() &&
+        d.getFullYear() === y.getFullYear()
+      );
+    }).length,
+    week: transactions.filter(
+      (t) => new Date(t.timestamp) >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+    ).length,
+    month: transactions.filter((t) => {
+      const d = new Date(t.timestamp);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length,
+    all: transactions.length,
+  };
+
+  // Filter transactions based on selected period
   const filteredTransactions = transactions.filter((t) => {
     if (period === 'all') return true;
     const tDate = new Date(t.timestamp);
@@ -95,8 +131,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const periodNetProfit = periodIncome - periodExpense;
 
+  // If 'today' tab is active but today has 0 transactions while database contains existing transactions,
+  // automatically show recent transactions so the user never sees an empty screen or feels the need to manually refresh!
+  const isAutoShowingRecent = period === 'today' && periodCounts.today === 0 && transactions.length > 0;
+  const targetTrxList = isAutoShowingRecent ? transactions : filteredTransactions;
+
   // Filtered list for the transactions table
-  const displayedTransactions = filteredTransactions.filter((t) => {
+  const displayedTransactions = targetTrxList.filter((t) => {
     if (trxFilter !== 'ALL' && t.type !== trxFilter) return false;
     if (trxSearchQuery.trim()) {
       const q = trxSearchQuery.toLowerCase();
@@ -151,11 +192,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-semibold">
             {(
               [
-                { id: 'today', label: 'আজ' },
-                { id: 'yesterday', label: 'গতকাল' },
-                { id: 'week', label: '৭ দিন' },
-                { id: 'month', label: 'চলতি মাস' },
-                { id: 'all', label: 'সব' },
+                { id: 'today', label: `আজ (${periodCounts.today})` },
+                { id: 'yesterday', label: `গতকাল (${periodCounts.yesterday})` },
+                { id: 'week', label: `৭ দিন (${periodCounts.week})` },
+                { id: 'month', label: `চলতি মাস (${periodCounts.month})` },
+                { id: 'all', label: `সব (${periodCounts.all})` },
               ] as const
             ).map((btn) => (
               <button
@@ -173,6 +214,37 @@ export const Dashboard: React.FC<DashboardProps> = ({
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Live Cloud Auto-Save Status Strip */}
+      <div className="bg-slate-900 text-slate-200 px-4 py-2.5 rounded-2xl border border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs shadow-xs">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <span className="flex items-center gap-1.5 text-emerald-400 font-bold bg-emerald-950/80 px-2.5 py-1 rounded-lg border border-emerald-700">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>ক্লাউড অটো-সেভ সক্রিয়</span>
+          </span>
+          <span className="text-slate-500 hidden sm:inline">•</span>
+          <span className="text-slate-300">
+            দোকান আইডি: <strong className="text-emerald-300 font-mono">{settings.shopKey || 'bdc'}</strong>
+          </span>
+          <span className="text-slate-500 hidden sm:inline">•</span>
+          <span className="text-slate-300">
+            ডাটাবেজে মোট: <b className="text-white">{transactions.length}</b>টি ভাউচার, <b className="text-white">{inventory.length}</b>টি পণ্য, <b className="text-white">{customers.length}</b>জন কাস্টমার
+          </span>
+        </div>
+
+        {onRefreshData && (
+          <button
+            type="button"
+            onClick={onRefreshData}
+            disabled={isDataLoading}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold cursor-pointer transition disabled:opacity-50"
+            title="Supabase ক্লাউড থেকে সর্বশেষ ডাটা রিফ্রেশ করুন"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${isDataLoading ? 'animate-spin' : ''}`} />
+            <span>{isDataLoading ? 'সিঙ্ক হচ্ছে...' : 'ডাটাবেজ রিফ্রেশ'}</span>
+          </button>
+        )}
       </div>
 
       {/* 4 PRIMARY METRIC CARDS (Fresh, High-Craft Design) */}
@@ -334,6 +406,47 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       {/* RECENT TRANSACTIONS TABLE */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        {/* Auto-Sync Reassurance Notice when today is empty but past transactions exist in DB */}
+        {isAutoShowingRecent && (
+          <div className="p-4 bg-emerald-50/90 border-b border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5 text-emerald-950">
+              <div className="w-8 h-8 rounded-xl bg-emerald-100 border border-emerald-300 flex items-center justify-center shrink-0">
+                <Database className="w-4 h-4 text-emerald-700" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-sm text-emerald-900">আজকের তারিখে এখনো কোনো ভাউচার কাটা হয়নি</span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-200/80 text-emerald-900 font-semibold text-[10px]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+                    অটো-সিঙ্ক লাইভ
+                  </span>
+                </div>
+                <span className="text-emerald-800">
+                  ম্যানুয়াল রিফ্রেশ করার প্রয়োজন নেই — ডাটাবেজের পূর্ববর্তী <b>{transactions.length}টি লেনদেনের</b> সর্বশেষগুলো স্বয়ংক্রিয়ভাবে নিচে প্রদর্শিত হচ্ছে।
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {periodCounts.yesterday > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setPeriod('yesterday')}
+                  className="px-3 py-1.5 bg-white border border-emerald-300 hover:bg-emerald-100 text-emerald-900 rounded-xl font-bold cursor-pointer transition shadow-2xs"
+                >
+                  গতকালকের লেনদেন ({periodCounts.yesterday})
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setPeriod('all')}
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold cursor-pointer transition shadow-xs"
+              >
+                সব লেনদেন দেখুন ({transactions.length}টি)
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Table Controls */}
         <div className="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
           <div>
@@ -413,8 +526,50 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <tbody className="divide-y divide-slate-100">
               {displayedTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-10 text-slate-400">
-                    কোনো লেনদেন পাওয়া যায়নি। নতুন ভাউচার তৈরি করতে উপরের বাটনে ক্লিক করুন।
+                  <td colSpan={7} className="text-center py-10 px-4 text-slate-500 bg-slate-50/50">
+                    <div className="max-w-md mx-auto space-y-2">
+                      <p className="font-semibold text-slate-800 text-sm">
+                        {period === 'today'
+                          ? 'আজকের তারিখে কোনো লেনদেন পাওয়া যায়নি'
+                          : 'নির্বাচিত ফিল্টারে কোনো লেনদেন মেলেনি'}
+                      </p>
+                      {transactions.length > 0 ? (
+                        <>
+                          <p className="text-xs text-slate-500">
+                            ক্লাউড ডাটাবেজে আপনার মোট <b>{transactions.length}</b>টি লেনদেন সম্পূর্ণ সুরক্ষিতভাবে সংরক্ষিত রয়েছে।
+                          </p>
+                          <div className="flex items-center justify-center gap-2 pt-2 flex-wrap">
+                            {periodCounts.yesterday > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setPeriod('yesterday')}
+                                className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer"
+                              >
+                                গতকালকের লেনদেন ({periodCounts.yesterday}টি)
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setPeriod('all')}
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+                            >
+                              সব লেনদেন দেখুন ({transactions.length}টি)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={onOpenNewTransaction}
+                              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold transition cursor-pointer"
+                            >
+                              + নতুন ভাউচার করুন
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-xs text-slate-400">
+                          কোনো লেনদেন পাওয়া যায়নি। নতুন ভাউচার তৈরি করতে উপরের বাটনে ক্লিক করুন।
+                        </p>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ) : (

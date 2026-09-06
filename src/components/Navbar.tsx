@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   LogOut,
   User,
+  RefreshCw,
 } from 'lucide-react';
 import { ShopSettings, SupabaseConfig, UserSession } from '../types';
 import { formatTaka } from '../lib/calculations';
@@ -34,6 +35,8 @@ interface NavbarProps {
   onOpenDatabaseModal: () => void;
   currentUser?: UserSession | null;
   onLogout?: () => void;
+  onRefreshData?: () => void;
+  isDataLoading?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -51,6 +54,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenDatabaseModal,
   currentUser,
   onLogout,
+  onRefreshData,
+  isDataLoading,
 }) => {
   const navItems = [
     {
@@ -127,7 +132,28 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </>
               )}
             </button>
-            <span className="font-bold text-white hidden sm:inline">{settings.shopName}</span>
+
+            {isConnected && (
+              <span className="hidden md:inline-flex items-center gap-1 text-[10px] text-emerald-300 font-mono bg-emerald-950/80 px-2 py-0.5 rounded-md border border-emerald-700">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span>অটো-সেভ সক্রিয় ({settings.shopKey || 'bdc'})</span>
+              </span>
+            )}
+
+            {isConnected && (
+              <div
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md font-semibold text-[11px] bg-emerald-950/70 border border-emerald-700/70 text-emerald-300"
+                title="সব ডিভাইস ও ব্রাউজার থেকে স্বয়ংক্রিয় রিয়েলটাইম সিঙ্ক চালু (ম্যানুয়াল রিফ্রেশ প্রয়োজন নেই)"
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="hidden sm:inline">অটো-সিঙ্ক চালু (লাইভ)</span>
+              </div>
+            )}
+
+            <span className="font-bold text-white hidden lg:inline">{settings.shopName}</span>
           </div>
 
           {/* Quick Cash & Profit Figures + User Session & Logout */}

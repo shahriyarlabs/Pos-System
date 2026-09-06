@@ -45,7 +45,7 @@ export const DatabaseConnectModal: React.FC<DatabaseConnectModalProps> = ({
 }) => {
   const [url, setUrl] = useState(currentConfig.url || '');
   const [anonKey, setAnonKey] = useState(currentConfig.anonKey || '');
-  const [currentShopKey, setCurrentShopKey] = useState(shopKey || 'brothers-digital');
+  const [currentShopKey, setCurrentShopKey] = useState(shopKey || 'bdc');
 
   const [isTesting, setIsTesting] = useState(false);
   const [testStatus, setTestStatus] = useState<{
@@ -61,7 +61,7 @@ export const DatabaseConnectModal: React.FC<DatabaseConnectModalProps> = ({
       const stored = getStoredSupabaseConfig();
       setUrl(stored.url || currentConfig.url || '');
       setAnonKey(stored.anonKey || currentConfig.anonKey || '');
-      setCurrentShopKey(shopKey || 'brothers-digital');
+      setCurrentShopKey(shopKey || 'bdc');
       setTestStatus(null);
     }
   }, [isOpen, currentConfig, shopKey]);
@@ -109,7 +109,7 @@ export const DatabaseConnectModal: React.FC<DatabaseConnectModalProps> = ({
   const handleSaveAndConnect = async () => {
     const cleanUrl = url.trim();
     const cleanKey = anonKey.trim();
-    const cleanShopKey = currentShopKey.trim() || 'brothers-digital';
+    const cleanShopKey = currentShopKey.trim() || 'bdc';
 
     if (!cleanUrl || !cleanKey) {
       setTestStatus({
@@ -270,7 +270,7 @@ export const DatabaseConnectModal: React.FC<DatabaseConnectModalProps> = ({
                 type="text"
                 value={currentShopKey}
                 onChange={(e) => setCurrentShopKey(e.target.value)}
-                placeholder="brothers-digital"
+                placeholder="bdc"
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-hidden transition"
               />
             </div>

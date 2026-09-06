@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Lock,
   KeyRound,
@@ -23,6 +23,10 @@ import {
   RefreshCw,
   Eye,
   EyeOff,
+  Copy,
+  Check,
+  Code,
+  Terminal,
 } from 'lucide-react';
 import { ShopSettings, SupabaseConfig, UserSession } from '../types';
 import {
@@ -31,6 +35,8 @@ import {
   registerNewShopInSupabase,
   loginShopFromSupabase,
   saveStoredSupabaseConfig,
+  listShopsFromSupabase,
+  RegisteredShopSummary,
 } from '../lib/supabase';
 
 interface LoginScreenProps {
@@ -86,16 +92,51 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [activeMode, setActiveMode] = useState<'login' | 'register'>('login');
 
   // --- LOGIN FORM STATE ---
-  const [loginShopId, setLoginShopId] = useState(settings.shopKey || 'brothers-digital');
+  const [loginShopId, setLoginShopId] = useState(settings.shopKey || 'bdc');
   const [loginPin, setLoginPin] = useState('');
   const [showLoginPin, setShowLoginPin] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
+  // Registered shops loaded from Supabase
+  const [registeredShops, setRegisteredShops] = useState<RegisteredShopSummary[]>([]);
+  const [isLoadingShops, setIsLoadingShops] = useState(false);
+
+  // Manual SQL accordion state
+  const [showManualSql, setShowManualSql] = useState(false);
+  const [sqlCopied, setSqlCopied] = useState(false);
+
   // Optional custom DB accordion on login
   const [showCustomDbLogin, setShowCustomDbLogin] = useState(false);
   const [customDbUrl, setCustomDbUrl] = useState(supabaseConfig.url || '');
   const [customDbKey, setCustomDbKey] = useState(supabaseConfig.anonKey || '');
+
+  // Fetch registered shops in this Supabase database
+  const fetchRegisteredShops = async () => {
+    const url = (showCustomDbLogin && customDbUrl.trim()) || supabaseConfig.url || 'https://sjudmshppklwhwgivnzw.supabase.co';
+    const key = (showCustomDbLogin && customDbKey.trim()) || supabaseConfig.anonKey || 'sb_publishable_YhEUvRLOVOA5pPTLiAHn1A_3Ye1djfx';
+    const client = getSupabaseClient(url, key);
+    if (!client) return;
+
+    setIsLoadingShops(true);
+    try {
+      const shops = await listShopsFromSupabase(client);
+      setRegisteredShops(shops);
+      if (shops.length > 0) {
+        if (!loginShopId || loginShopId === 'brothers-digital' || loginShopId === '') {
+          setLoginShopId(shops[0].shopId);
+        }
+      }
+    } catch {
+      // Non-blocking
+    } finally {
+      setIsLoadingShops(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRegisteredShops();
+  }, [supabaseConfig.url, supabaseConfig.anonKey, showCustomDbLogin, customDbUrl, customDbKey]);
 
   // --- REGISTRATION FORM STATE ---
   const [regShopName, setRegShopName] = useState('');
@@ -140,7 +181,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     }
   };
 
-  // Handle Logo File Upload (reads to base64 Data URL)
+  // Handle Logo File Upload with automatic image compression
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -150,16 +191,34 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert('ছবির সাইজ ২ মেগাবাইট (MB) এর কম হতে হবে।');
-      return;
-    }
-
     const reader = new FileReader();
     reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      setLogoPreview(dataUrl);
-      setRegLogoUrl(dataUrl);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxSize = 240;
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > maxSize) {
+            height = Math.round((height * maxSize) / width);
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width = Math.round((width * maxSize) / height);
+            height = maxSize;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        const compressed = canvas.toDataURL('image/jpeg', 0.85);
+        setLogoPreview(compressed);
+        setRegLogoUrl(compressed);
+      };
+      img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
   };
@@ -448,10 +507,66 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               </div>
             )}
 
-            {/* Shop ID / Username */}
+            {/* Registered Shops in Database Banner */}
+            {registeredShops.length > 0 && (
+              <div className="bg-slate-800/90 border border-slate-700/80 rounded-2xl p-3 space-y-2">
+                <div className="flex items-center justify-between text-xs text-slate-300">
+                  <span className="font-bold flex items-center gap-1.5 text-emerald-400">
+                    <Store className="w-4 h-4 text-emerald-400" />
+                    ডাটাবেজে পাওয়া দোকান ({registeredShops.length}টি):
+                  </span>
+                  <button
+                    type="button"
+                    onClick={fetchRegisteredShops}
+                    className="text-[11px] text-slate-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer"
+                    title="দোকানের তালিকা রিফ্রেশ করুন"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isLoadingShops ? 'animate-spin' : ''}`} />
+                    রিফ্রেশ
+                  </button>
+                </div>
+                <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                  {registeredShops.map((s) => (
+                    <div
+                      key={s.shopId}
+                      onClick={() => {
+                        setLoginShopId(s.shopId);
+                        setLoginPin('1235');
+                      }}
+                      className={`flex items-center justify-between p-2.5 rounded-xl border transition cursor-pointer ${
+                        loginShopId.toLowerCase() === s.shopId.toLowerCase()
+                          ? 'bg-emerald-950/80 border-emerald-500 text-white shadow-sm'
+                          : 'bg-slate-900/80 border-slate-700/60 text-slate-300 hover:border-slate-500'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {s.logo ? (
+                          <img src={s.logo} alt={s.shopName} className="w-8 h-8 rounded-lg object-cover shrink-0 border border-slate-700" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-lg bg-emerald-800 text-white flex items-center justify-center font-black text-xs shrink-0">
+                            {s.shopId.slice(0, 3).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold truncate text-white">{s.shopName}</p>
+                          <p className="text-[10px] text-slate-400 truncate">
+                            আইডি: <span className="font-mono text-emerald-400 font-bold">{s.shopId}</span> • {s.phone || s.ownerName}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold shrink-0">
+                        {loginShopId.toLowerCase() === s.shopId.toLowerCase() ? 'নির্বাচিত ✓' : 'লগইন নির্বাচন'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Shop ID / Username / Name / Phone */}
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                শপ আইডি / ইউজার আইডি (Shop ID)
+                শপ আইডি, দোকানের নাম অথবা মোবাইল নম্বর
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -462,12 +577,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   required
                   value={loginShopId}
                   onChange={(e) => setLoginShopId(e.target.value)}
-                  placeholder="যেমন: brothers-digital"
+                  placeholder="যেমন: bdc বা ব্রাদার্স ডিজিটাল বা 01309369789"
                   className="w-full pl-10 pr-4 py-3 bg-slate-800/80 border border-slate-700 rounded-2xl text-sm font-semibold text-white placeholder-slate-500 focus:outline-hidden focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
                 />
               </div>
               <p className="text-[10px] text-slate-400 mt-1">
-                ডিফল্ট ডেমো শপ: <span className="font-mono text-emerald-400 font-bold">brothers-digital</span>
+                আপনার শপ আইডি (<span className="font-mono text-emerald-400 font-bold">bdc</span>), অথবা দোকানের নাম, অথবা মোবাইল নম্বর লিখে লগইন করতে পারবেন।
               </p>
             </div>
 
@@ -506,6 +621,180 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   পিন পূরণ করুন
                 </button>
               </div>
+            </div>
+
+            {/* Manual Database & SQL Code Accordion */}
+            <div className="border border-slate-800 rounded-2xl p-3 bg-slate-950/40">
+              <button
+                type="button"
+                onClick={() => setShowManualSql(!showManualSql)}
+                className="w-full flex items-center justify-between text-xs text-slate-300 hover:text-white cursor-pointer"
+              >
+                <div className="flex items-center gap-1.5 font-bold">
+                  <Terminal className="w-3.5 h-3.5 text-amber-400" />
+                  <span>ডাটাবেজে ম্যানুয়ালি তথ্য ঢুকানো ও SQL স্ক্রিপ্ট</span>
+                </div>
+                {showManualSql ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+
+              {showManualSql && (
+                <div className="mt-3 space-y-2.5 pt-2 border-t border-slate-800 text-xs">
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    আপনার Supabase ড্যাশবোর্ডে গিয়ে <strong>SQL Editor</strong> &gt; <strong>New Query</strong>-তে গিয়ে নিচের কোডটি পেস্ট করে <strong>Run</strong> বাটনে ক্লিক করলে সমস্ত টেবিল ও <code className="text-emerald-400 font-mono">bdc</code> দোকান তৈরি হয়ে যাবে:
+                  </p>
+                  <div className="relative">
+                    <pre className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-[10px] font-mono text-emerald-300 max-h-48 overflow-y-auto leading-relaxed select-all">
+{`-- ১. শপ সেটিংস টেবিল
+CREATE TABLE IF NOT EXISTS shop_settings (
+  shop_id TEXT PRIMARY KEY,
+  shop_name TEXT NOT NULL,
+  shop_subtitle TEXT,
+  owner_name TEXT,
+  phone1 TEXT,
+  phone2 TEXT,
+  address TEXT,
+  email TEXT,
+  opening_cash_balance NUMERIC DEFAULT 0,
+  receipt_footer_note TEXT,
+  receipt_type TEXT DEFAULT 'standard',
+  admin_pin TEXT DEFAULT '1235',
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ২. ব্রাদার্স ডিজিটাল সেন্টার (bdc) ইনসার্ট
+INSERT INTO shop_settings (
+  shop_id, shop_name, shop_subtitle, owner_name,
+  phone1, phone2, address, email, opening_cash_balance,
+  receipt_footer_note, receipt_type, admin_pin, updated_at
+) VALUES (
+  'bdc',
+  'ব্রাদার্স ডিজিটাল সেন্টার',
+  'Brothers Digital Center & Cyber Point',
+  'শাহরিয়ার ইমন',
+  '01309369789',
+  '01518947904',
+  'বটতলা বাজার, মদন, নেত্রকোনা',
+  'brothersdigital.bd@gmail.com',
+  15000,
+  'আমাদের সেবা গ্রহণ করার জন্য ধন্যবাদ!',
+  'standard',
+  '1235',
+  NOW()
+) ON CONFLICT (shop_id) DO UPDATE SET
+  shop_name = EXCLUDED.shop_name,
+  owner_name = EXCLUDED.owner_name,
+  phone1 = EXCLUDED.phone1,
+  admin_pin = EXCLUDED.admin_pin,
+  updated_at = NOW();
+
+-- ৩. এমএফএস একাউন্টস টেবিল
+CREATE TABLE IF NOT EXISTS mfs_accounts (
+  id TEXT PRIMARY KEY,
+  shop_id TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  account_name TEXT NOT NULL,
+  agent_number TEXT,
+  balance NUMERIC DEFAULT 0,
+  commission_earned_today NUMERIC DEFAULT 0,
+  cash_in_today NUMERIC DEFAULT 0,
+  cash_out_today NUMERIC DEFAULT 0,
+  color TEXT
+);
+
+INSERT INTO mfs_accounts (id, shop_id, provider, account_name, agent_number, balance, color)
+VALUES
+  ('mfs-bkash-bdc', 'bdc', 'BKASH', 'বিকাশ এজেন্ট', '01309369789', 15000, '#E2136E'),
+  ('mfs-nagad-bdc', 'bdc', 'NAGAD', 'নগদ এজেন্ট', '01309369789', 10000, '#F7941D'),
+  ('mfs-rocket-bdc', 'bdc', 'ROCKET', 'রকেট এজেন্ট', '01309369789', 5000, '#8C3494')
+ON CONFLICT (id) DO NOTHING;`}
+                    </pre>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const sqlText = `-- ১. শপ সেটিংস টেবিল
+CREATE TABLE IF NOT EXISTS shop_settings (
+  shop_id TEXT PRIMARY KEY,
+  shop_name TEXT NOT NULL,
+  shop_subtitle TEXT,
+  owner_name TEXT,
+  phone1 TEXT,
+  phone2 TEXT,
+  address TEXT,
+  email TEXT,
+  opening_cash_balance NUMERIC DEFAULT 0,
+  receipt_footer_note TEXT,
+  receipt_type TEXT DEFAULT 'standard',
+  admin_pin TEXT DEFAULT '1235',
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ২. ব্রাদার্স ডিজিটাল সেন্টার (bdc) ইনসার্ট
+INSERT INTO shop_settings (
+  shop_id, shop_name, shop_subtitle, owner_name,
+  phone1, phone2, address, email, opening_cash_balance,
+  receipt_footer_note, receipt_type, admin_pin, updated_at
+) VALUES (
+  'bdc',
+  'ব্রাদার্স ডিজিটাল সেন্টার',
+  'Brothers Digital Center & Cyber Point',
+  'শাহরিয়ার ইমন',
+  '01309369789',
+  '01518947904',
+  'বটতলা বাজার, মদন, নেত্রকোনা',
+  'brothersdigital.bd@gmail.com',
+  15000,
+  'আমাদের সেবা গ্রহণ করার জন্য ধন্যবাদ!',
+  'standard',
+  '1235',
+  NOW()
+) ON CONFLICT (shop_id) DO UPDATE SET
+  shop_name = EXCLUDED.shop_name,
+  owner_name = EXCLUDED.owner_name,
+  phone1 = EXCLUDED.phone1,
+  admin_pin = EXCLUDED.admin_pin,
+  updated_at = NOW();
+
+-- ৩. এমএফএস একাউন্টস টেবিল
+CREATE TABLE IF NOT EXISTS mfs_accounts (
+  id TEXT PRIMARY KEY,
+  shop_id TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  account_name TEXT NOT NULL,
+  agent_number TEXT,
+  balance NUMERIC DEFAULT 0,
+  commission_earned_today NUMERIC DEFAULT 0,
+  cash_in_today NUMERIC DEFAULT 0,
+  cash_out_today NUMERIC DEFAULT 0,
+  color TEXT
+);
+
+INSERT INTO mfs_accounts (id, shop_id, provider, account_name, agent_number, balance, color)
+VALUES
+  ('mfs-bkash-bdc', 'bdc', 'BKASH', 'বিকাশ এজেন্ট', '01309369789', 15000, '#E2136E'),
+  ('mfs-nagad-bdc', 'bdc', 'NAGAD', 'নগদ এজেন্ট', '01309369789', 10000, '#F7941D'),
+  ('mfs-rocket-bdc', 'bdc', 'ROCKET', 'রকেট এজেন্ট', '01309369789', 5000, '#8C3494')
+ON CONFLICT (id) DO NOTHING;`;
+                        navigator.clipboard.writeText(sqlText);
+                        setSqlCopied(true);
+                        setTimeout(() => setSqlCopied(false), 2500);
+                      }}
+                      className="absolute top-2 right-2 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] flex items-center gap-1 shadow-md cursor-pointer"
+                    >
+                      {sqlCopied ? (
+                        <>
+                          <Check className="w-3 h-3 text-white" />
+                          <span>কপি হয়েছে!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3 text-white" />
+                          <span>SQL কপি করুন</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Optional Custom Database Accordion */}

@@ -396,20 +396,44 @@ export async function pullAllFromSupabase(
   }
 }
 
-// Subscribe to Realtime Postgres Changes for instant multi-device sync
+// Cross-tab broadcast channel for instantaneous zero-latency local tab/window sync
+export const syncBroadcastChannel =
+  typeof window !== 'undefined' && 'BroadcastChannel' in window
+    ? new BroadcastChannel('bdc_pos_sync_channel')
+    : null;
+
+export function broadcastLocalChange(shopKey: string) {
+  try {
+    if (syncBroadcastChannel) {
+      syncBroadcastChannel.postMessage({ type: 'BDC_AUTO_SYNC', shopKey, timestamp: Date.now() });
+    }
+    // Storage event fallback for older browsers or if BroadcastChannel is blocked
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem('bdc_last_sync_ping', `${shopKey}_${Date.now()}`);
+    }
+  } catch {}
+}
+
+// Subscribe to Realtime Postgres Changes + Cross-Tab Events for instant multi-device auto-sync
 export function subscribeToShopRealtime(
   client: SupabaseClient,
   shopKey: string,
   onRemoteChange: () => void
 ): () => void {
   try {
+    const channelId = `realtime_${shopKey}_${Date.now()}`;
     const channel = client
-      .channel(`realtime_shop_${shopKey}`)
+      .channel(channelId)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'transactions' },
         (payload: any) => {
-          if (!payload.new || payload.new.shop_id === shopKey) {
+          if (
+            !payload.new ||
+            !payload.new.shop_id ||
+            payload.new.shop_id === shopKey ||
+            payload.old?.shop_id === shopKey
+          ) {
             onRemoteChange();
           }
         }
@@ -418,7 +442,12 @@ export function subscribeToShopRealtime(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'customers' },
         (payload: any) => {
-          if (!payload.new || payload.new.shop_id === shopKey) {
+          if (
+            !payload.new ||
+            !payload.new.shop_id ||
+            payload.new.shop_id === shopKey ||
+            payload.old?.shop_id === shopKey
+          ) {
             onRemoteChange();
           }
         }
@@ -427,7 +456,12 @@ export function subscribeToShopRealtime(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'inventory_items' },
         (payload: any) => {
-          if (!payload.new || payload.new.shop_id === shopKey) {
+          if (
+            !payload.new ||
+            !payload.new.shop_id ||
+            payload.new.shop_id === shopKey ||
+            payload.old?.shop_id === shopKey
+          ) {
             onRemoteChange();
           }
         }
@@ -436,15 +470,67 @@ export function subscribeToShopRealtime(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'mfs_accounts' },
         (payload: any) => {
-          if (!payload.new || payload.new.shop_id === shopKey) {
+          if (
+            !payload.new ||
+            !payload.new.shop_id ||
+            payload.new.shop_id === shopKey ||
+            payload.old?.shop_id === shopKey
+          ) {
             onRemoteChange();
           }
         }
       )
-      .subscribe();
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'shop_settings' },
+        (payload: any) => {
+          if (
+            !payload.new ||
+            !payload.new.shop_id ||
+            payload.new.shop_id === shopKey ||
+            payload.old?.shop_id === shopKey
+          ) {
+            onRemoteChange();
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[Realtime] Auto-sync live on Supabase WebSocket');
+        }
+      });
+
+    // Cross-Tab BroadcastChannel listener for instant same-browser multi-tab updates
+    const onBroadcastMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'BDC_AUTO_SYNC') {
+        onRemoteChange();
+      }
+    };
+
+    if (syncBroadcastChannel) {
+      syncBroadcastChannel.addEventListener('message', onBroadcastMessage);
+    }
+
+    // LocalStorage storage-event listener (fallback cross-tab sync)
+    const onStorageChange = (e: StorageEvent) => {
+      if (e.key === 'bdc_last_sync_ping') {
+        onRemoteChange();
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', onStorageChange);
+    }
 
     return () => {
-      client.removeChannel(channel);
+      try {
+        client.removeChannel(channel);
+      } catch {}
+      if (syncBroadcastChannel) {
+        syncBroadcastChannel.removeEventListener('message', onBroadcastMessage);
+      }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('storage', onStorageChange);
+      }
     };
   } catch (e) {
     console.warn('Realtime subscription error:', e);
@@ -542,6 +628,7 @@ export async function createSupabaseTransaction(
     }
   }
 
+  broadcastLocalChange(shopKey);
   return { success: true, transaction: newTrx };
 }
 
@@ -560,6 +647,7 @@ export async function deleteSupabaseTransaction(
     throw new Error(`লেনদেন মোছা যায়নি: ${error.message}`);
   }
 
+  broadcastLocalChange(shopKey);
   return { success: true };
 }
 
@@ -650,6 +738,7 @@ export async function recordSupabaseDuePayment(
 
   if (updErr) throw new Error(`কাস্টমার ব্যালেন্স আপডেট ব্যর্থ: ${updErr.message}`);
 
+  broadcastLocalChange(shopKey);
   return { success: true, transaction: trxRecord };
 }
 
@@ -692,6 +781,7 @@ export async function saveSupabaseCustomer(
   });
 
   if (error) throw new Error(`কাস্টমার সংরক্ষণ ব্যর্থ: ${error.message}`);
+  broadcastLocalChange(shopKey);
   return { success: true, customer: customerRecord };
 }
 
@@ -736,6 +826,7 @@ export async function saveSupabaseInventoryItem(
   });
 
   if (error) throw new Error(`পণ্য সংরক্ষণ ব্যর্থ: ${error.message}`);
+  broadcastLocalChange(shopKey);
   return { success: true, item: itemRecord };
 }
 
@@ -755,6 +846,7 @@ export async function restockSupabaseInventory(
     .eq('shop_id', shopKey);
 
   if (error) throw new Error(`স্টক আপডেট ব্যর্থ: ${error.message}`);
+  broadcastLocalChange(shopKey);
   return { success: true };
 }
 
@@ -847,6 +939,7 @@ export async function executeSupabaseMfsTransaction(
     note: trxRecord.note,
   });
 
+  broadcastLocalChange(shopKey);
   return { success: true, transaction: trxRecord };
 }
 
@@ -880,6 +973,7 @@ export async function updateSupabaseMfsAccount(
   });
 
   if (error) throw new Error(`ব্যালেন্স আপডেট ব্যর্থ: ${error.message}`);
+  broadcastLocalChange(shopKey);
   return { success: true };
 }
 
@@ -913,6 +1007,7 @@ export async function updateSupabaseSettings(
   });
 
   if (error) throw new Error(`সেটিংস সংরক্ষণ ব্যর্থ: ${error.message}`);
+  broadcastLocalChange(shopKey);
   return { success: true };
 }
 
@@ -1044,7 +1139,51 @@ export async function registerNewShopInSupabase(
   }
 }
 
-// Login shop user from Supabase
+export function toEnglishDigits(str: string): string {
+  const bengaliDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+  return str.replace(/[০-৯]/g, (w) => String(bengaliDigits.indexOf(w)));
+}
+
+export interface RegisteredShopSummary {
+  shopId: string;
+  shopName: string;
+  ownerName: string;
+  phone: string;
+  logo?: string;
+  updatedAt?: string;
+}
+
+// List all registered shops in this Supabase database
+export async function listShopsFromSupabase(client: SupabaseClient): Promise<RegisteredShopSummary[]> {
+  try {
+    const { data, error } = await client
+      .from('shop_settings')
+      .select('shop_id, shop_name, owner_name, phone1, receipt_footer_note, updated_at')
+      .order('updated_at', { ascending: false });
+
+    if (error || !data) return [];
+    return data.map((s) => {
+      let logo: string | undefined = undefined;
+      if (s.receipt_footer_note?.startsWith('METADATA:')) {
+        try {
+          logo = JSON.parse(s.receipt_footer_note.replace('METADATA:', '')).logo;
+        } catch {}
+      }
+      return {
+        shopId: s.shop_id,
+        shopName: s.shop_name,
+        ownerName: s.owner_name || '',
+        phone: s.phone1 || '',
+        logo,
+        updatedAt: s.updated_at,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+// Login shop user from Supabase with smart matching (Shop ID, Phone, Shop Name, Owner Name)
 export async function loginShopFromSupabase(
   client: SupabaseClient,
   usernameOrShopId: string,
@@ -1055,36 +1194,71 @@ export async function loginShopFromSupabase(
     const cleanId = rawInput.toLowerCase();
     const enteredPin = pinOrPass.trim();
 
-    // Query shop_settings for shop_id match or phone match
-    const { data: shops, error } = await client
+    // Fetch all shop records from Supabase
+    const { data: allShops, error } = await client
       .from('shop_settings')
-      .select('*')
-      .or(`shop_id.eq.${cleanId},phone1.eq.${rawInput},phone2.eq.${rawInput}`)
-      .limit(1);
+      .select('*');
 
     if (error) {
-      throw new Error(`ডাটাবেজ সার্চ সমস্যা: ${error.message}`);
+      if (error.message?.includes('does not exist') || (error as any).code === '42P01') {
+        throw new Error('ডাটাবেজে shop_settings টেবিল পাওয়া যায়নি। দয়া করে নিচে প্রদর্শিত SQL স্ক্রিপ্টটি Supabase SQL Editor-এ রান করুন।');
+      }
+      throw new Error(`ডাটাবেজ সমস্যা: ${error.message}`);
     }
 
-    let shopData = shops && shops.length > 0 ? shops[0] : null;
-
-    // Fallback if entering "brothers-digital" or "admin"
-    if (!shopData && (cleanId === 'brothers-digital' || cleanId === 'admin')) {
-      const { data: defaultShop } = await client
-        .from('shop_settings')
-        .select('*')
-        .eq('shop_id', 'brothers-digital')
-        .maybeSingle();
-      shopData = defaultShop;
-    }
-
-    if (!shopData) {
+    if (!allShops || allShops.length === 0) {
       return {
         success: false,
-        message: 'এই আইডি দিয়ে কোনো নিবন্ধিত দোকান পাওয়া যায়নি। শপ আইডি যাচাই করুন অথবা নতুন দোকান রেজিস্ট্রেশন করুন।',
+        message: 'আপনার Supabase ডাটাবেজে এখনো কোনো দোকান নিবন্ধিত নেই। "নতুন দোকান রেজিস্ট্রেশন" বাটনে ক্লিক করে প্রথম দোকানটি তৈরি করুন।',
       };
     }
 
+    // Smart matching logic:
+    // 1. Exact shop_id (e.g. "bdc")
+    // 2. Transliterated / alphanumeric shop_id
+    // 3. Phone number match (supports English and Bengali digits: 01309369789 or ০১৩০৯৩৬৯৭৮৯)
+    // 4. Shop Name match (e.g. "ব্রাদার্স ডিজিটাল সেন্টার")
+    // 5. Owner Name match (e.g. "শাহরিয়ার ইমন" or "ইমন")
+    // 6. If only 1 shop in database, match generic "admin" or "bdc" or "brothers-digital"
+    const normalizedPhoneInput = toEnglishDigits(rawInput).replace(/[^0-9]/g, '');
+
+    let matchedShop = allShops.find((s) => {
+      // 1. shop_id exact match (case-insensitive)
+      if (s.shop_id?.toLowerCase() === cleanId) return true;
+      // 2. shop_id alphanumeric match
+      if (s.shop_id && s.shop_id.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanId.replace(/[^a-z0-9]/g, '')) return true;
+      // 3. Phone match
+      if (normalizedPhoneInput && normalizedPhoneInput.length >= 6) {
+        const p1 = toEnglishDigits(s.phone1 || '').replace(/[^0-9]/g, '');
+        const p2 = toEnglishDigits(s.phone2 || '').replace(/[^0-9]/g, '');
+        if (p1 && (p1.endsWith(normalizedPhoneInput) || normalizedPhoneInput.endsWith(p1))) return true;
+        if (p2 && (p2.endsWith(normalizedPhoneInput) || normalizedPhoneInput.endsWith(p2))) return true;
+      }
+      // 4. Shop name match
+      if (s.shop_name && s.shop_name.toLowerCase().trim() === rawInput.toLowerCase()) return true;
+      if (s.shop_name && s.shop_name.toLowerCase().includes(rawInput.toLowerCase())) return true;
+      // 5. Owner name match
+      if (s.owner_name && s.owner_name.toLowerCase().trim() === rawInput.toLowerCase()) return true;
+      if (s.owner_name && s.owner_name.toLowerCase().includes(rawInput.toLowerCase())) return true;
+      return false;
+    });
+
+    // Fallback: If only 1 shop exists in this database and user typed "admin" / "shop" / "bdc" / "brothers-digital"
+    if (!matchedShop && allShops.length === 1) {
+      if (['admin', 'bdc', 'shop', 'brothers-digital', 'pos', 'owner'].includes(cleanId) || rawInput === '') {
+        matchedShop = allShops[0];
+      }
+    }
+
+    if (!matchedShop) {
+      const availableNames = allShops.map((s) => `"${s.shop_name}" (ID: ${s.shop_id})`).join(', ');
+      return {
+        success: false,
+        message: `"${rawInput}" আইডি দিয়ে কোনো দোকান মেলেনি। এই ডাটাবেজে বিদ্যমান দোকান: ${availableNames}`,
+      };
+    }
+
+    const shopData = matchedShop;
     const expectedPin = String(shopData.admin_pin || '1235').trim();
     const isPinCorrect =
       enteredPin === expectedPin ||
@@ -1178,6 +1352,12 @@ export async function deleteAllFromSupabase(
       for (const res of results) {
         if (res.error) throw res.error;
       }
+    }
+
+    if (shopKey) {
+      broadcastLocalChange(shopKey);
+    } else {
+      broadcastLocalChange('all');
     }
 
     return {

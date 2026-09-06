@@ -160,7 +160,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         mfsAccounts,
         settings,
       },
-      settings.shopKey || 'brothers-digital'
+      settings.shopKey || 'bdc'
     );
     setIsSyncing(false);
 
@@ -184,7 +184,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
 
     setIsSyncing(true);
-    const res = await pullAllFromSupabase(client, settings.shopKey || 'brothers-digital');
+    const res = await pullAllFromSupabase(client, settings.shopKey || 'bdc');
     setIsSyncing(false);
 
     if (res.success && res.data) {
@@ -218,7 +218,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if (cleanupMode === 'truncate') {
       code = SUPABASE_CLEANUP_SQL;
     } else if (cleanupMode === 'shop') {
-      code = SUPABASE_DELETE_SHOP_SQL(settings.shopKey || 'brothers-digital');
+      code = SUPABASE_DELETE_SHOP_SQL(settings.shopKey || 'bdc');
     }
     navigator.clipboard.writeText(code);
     setCopiedCleanupSql(true);
@@ -232,7 +232,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       return;
     }
 
-    const shopKey = settings.shopKey || 'brothers-digital';
+    const shopKey = settings.shopKey || 'bdc';
     const warningMsg =
       cleanupMode === 'except_cash'
         ? `⚠️ আপনি কি ক্যাশ ইন হ্যান্ড (হাতে নগদ উদ্বৃত্ত) ও সেটিংস অক্ষত রেখে লেনদেন, কাস্টমার ও স্টক ক্লাউড থেকে মুছে ফেলতে চান?`
@@ -281,7 +281,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       try {
         const client = getSupabaseClient(supabaseUrl, supabaseAnonKey);
         if (client) {
-          await updateSupabaseSettings(client, profileForm, settings.shopKey || 'brothers-digital');
+          await updateSupabaseSettings(client, profileForm, settings.shopKey || 'bdc');
         }
       } catch (err) {
         console.error('Failed to sync updated profile to Supabase', err);
@@ -359,7 +359,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 Super Admin
               </span>
               <span className="text-xs font-mono bg-slate-100 text-slate-700 px-2 py-0.5 rounded-lg border border-slate-200">
-                Shop: {settings.shopKey || 'brothers-digital'}
+                Shop: {settings.shopKey || 'bdc'}
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -372,7 +372,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="px-3 py-1.5 rounded-2xl text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1.5">
             <User className="w-3.5 h-3.5 text-slate-500" />
-            <span>শপ আইডি: <strong className="text-emerald-700 font-mono">{settings.shopKey || 'brothers-digital'}</strong></span>
+            <span>শপ আইডি: <strong className="text-emerald-700 font-mono">{settings.shopKey || 'bdc'}</strong></span>
           </div>
 
           <div
@@ -484,11 +484,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <h2 className="text-lg font-bold">যেকোনো ডিভাইস (মোবাইল ও পিসি) থেকে সরাসরি লগইন</h2>
                 </div>
                 <p className="text-xs text-indigo-100 leading-relaxed max-w-2xl">
-                  আপনার যেকোনো মোবাইল, ট্যাবলেট বা কম্পিউটার ব্রাউজারে এই সাইটটি ওপেন করে আপনার <b>শপ আইডি</b> ({settings.shopKey || 'brothers-digital'}) এবং <b>পিন কোড</b> দিয়ে সরাসরি প্রবেশ করুন। কোনো পেয়ারিং কোডের প্রয়োজন নেই—একই সাথে সকল ডিভাইসে লাইভ ডেটা সিঙ্ক হবে।
+                  আপনার যেকোনো মোবাইল, ট্যাবলেট বা কম্পিউটার ব্রাউজারে এই সাইটটি ওপেন করে আপনার <b>শপ আইডি</b> ({settings.shopKey || 'bdc'}) এবং <b>পিন কোড</b> দিয়ে সরাসরি প্রবেশ করুন। কোনো পেয়ারিং কোডের প্রয়োজন নেই—একই সাথে সকল ডিভাইসে লাইভ ডেটা সিঙ্ক হবে।
                 </p>
                 <div className="pt-1 flex items-center gap-2 text-xs">
                   <span className="px-3 py-1.5 bg-white/10 rounded-xl font-mono text-emerald-300">
-                    লগইন শপ আইডি: <b>{settings.shopKey || 'brothers-digital'}</b>
+                    লগইন শপ আইডি: <b>{settings.shopKey || 'bdc'}</b>
                   </span>
                   <span className="px-3 py-1.5 bg-white/10 rounded-xl text-indigo-200">
                     মাস্টার পিন: <b>••••</b>
@@ -501,7 +501,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   {supabaseConfig.isConnected ? 'সক্রিয় ও রিয়েলটাইম সিঙ্ক চালু' : 'অফলাইন / লোকাল মোড'}
                 </div>
                 <div className="text-[11px] text-indigo-200 mt-1">
-                  দোকানের কোড: <b>{settings.shopKey || 'brothers-digital'}</b>
+                  দোকানের কোড: <b>{settings.shopKey || 'bdc'}</b>
                 </div>
                 {supabaseConfig.lastSyncTime && (
                   <div className="text-[10px] text-slate-300 mt-1">
@@ -766,7 +766,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    নির্দিষ্ট শপের ডেটা মুছুন ({settings.shopKey || 'brothers-digital'})
+                    নির্দিষ্ট শপের ডেটা মুছুন ({settings.shopKey || 'bdc'})
                   </button>
                 </div>
               </div>
@@ -778,7 +778,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     ? SUPABASE_CLEANUP_EXCEPT_CASH_SQL
                     : cleanupMode === 'truncate'
                     ? SUPABASE_CLEANUP_SQL
-                    : SUPABASE_DELETE_SHOP_SQL(settings.shopKey || 'brothers-digital')}
+                    : SUPABASE_DELETE_SHOP_SQL(settings.shopKey || 'bdc')}
                 </pre>
               </div>
 
@@ -1179,7 +1179,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </label>
                 <input
                   type="text"
-                  value={settings.shopKey || 'brothers-digital'}
+                  value={settings.shopKey || 'bdc'}
                   onChange={(e) =>
                     onUpdateSettings({
                       ...settings,

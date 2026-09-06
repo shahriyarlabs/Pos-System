@@ -193,7 +193,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
               <span className="text-xs font-medium text-slate-600">এই ডিভাইসে লগইন মনে রাখুন</span>
             </label>
             <span className="text-[11px] text-slate-400 font-mono">
-              Shop: {settings.shopKey || 'brothers-digital'}
+              Shop: {settings.shopKey || 'bdc'}
             </span>
           </div>
 
