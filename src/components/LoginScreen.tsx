@@ -170,20 +170,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [regSqlCopied, setRegSqlCopied] = useState(false);
 
   const getRegistrationSql = () => {
-    const targetShopId = (regShopId.trim() || 'brothers-digital').toLowerCase().replace(/[^a-z0-9_-]/g, '-');
-    const targetShopName = regShopName.trim() || 'ব্রাদার্স ডিজিটাল সেন্টার';
-    const targetSubtitle = regShopSubtitle.trim() || 'Brothers Digital Center & Cyber Point';
-    const targetOwner = regOwnerName.trim() || 'শাহরিয়ার ইমন';
-    const targetPhone = regPhone.trim() || '01309369789';
-    const targetAddress = regAddress.trim() || 'বটতলা বাজার, মদন, নেত্রকোনা';
-    const targetPin = regPin.trim() || '1235';
-    const targetCash = regOpeningCash || 0;
-    const targetLogo = regLogoUrl || '';
-
     return `-- ==========================================
 -- ডেটাবেজ টেবিল তৈরি (SQL Script)
--- দোকান: ${targetShopName} (ID: ${targetShopId})
 -- Supabase SQL Editor -> New Query -> Run
+-- (দোকানের তথ্য রেজিস্ট্রেশন ফর্ম সাবমিট করার সাথে সাথে স্বয়ংক্রিয়ভাবে সেভ হবে)
 -- ==========================================
 
 -- ১. শপ সেটিংস টেবিল (Shop Settings)
@@ -207,7 +197,7 @@ CREATE TABLE IF NOT EXISTS shop_settings (
 -- ২. কাস্টমার বকেয়া খাতা (Customers)
 CREATE TABLE IF NOT EXISTS customers (
     id TEXT PRIMARY KEY,
-    shop_id TEXT NOT NULL DEFAULT '${targetShopId}',
+    shop_id TEXT NOT NULL,
     name TEXT NOT NULL,
     phone TEXT NOT NULL,
     address TEXT,
@@ -222,7 +212,7 @@ CREATE TABLE IF NOT EXISTS customers (
 -- ৩. ইনভেন্টরি ও পণ্য স্টক (Inventory Items)
 CREATE TABLE IF NOT EXISTS inventory_items (
     id TEXT PRIMARY KEY,
-    shop_id TEXT NOT NULL DEFAULT '${targetShopId}',
+    shop_id TEXT NOT NULL,
     code TEXT NOT NULL,
     name_bn TEXT NOT NULL,
     name_en TEXT NOT NULL,
@@ -239,7 +229,7 @@ CREATE TABLE IF NOT EXISTS inventory_items (
 -- ৪. মোবাইল ব্যাংকিং ওয়ালেট (MFS Accounts)
 CREATE TABLE IF NOT EXISTS mfs_accounts (
     id TEXT PRIMARY KEY,
-    shop_id TEXT NOT NULL DEFAULT '${targetShopId}',
+    shop_id TEXT NOT NULL,
     provider TEXT NOT NULL,
     account_name TEXT NOT NULL,
     agent_number TEXT,
@@ -253,7 +243,7 @@ CREATE TABLE IF NOT EXISTS mfs_accounts (
 -- ৫. দৈনিক হিসাব ও লেনদেন (Transactions)
 CREATE TABLE IF NOT EXISTS transactions (
     id TEXT PRIMARY KEY,
-    shop_id TEXT NOT NULL DEFAULT '${targetShopId}',
+    shop_id TEXT NOT NULL,
     invoice_no TEXT NOT NULL,
     date TEXT NOT NULL,
     time TEXT NOT NULL,
@@ -279,6 +269,12 @@ CREATE TABLE IF NOT EXISTS transactions (
     operator_id TEXT,
     operator_name TEXT
 );
+
+-- দ্রুত কুয়েরি ও পারফরম্যান্সের জন্য ইনডেক্স
+CREATE INDEX IF NOT EXISTS idx_transactions_shop ON transactions(shop_id);
+CREATE INDEX IF NOT EXISTS idx_customers_shop ON customers(shop_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_shop ON inventory_items(shop_id);
+CREATE INDEX IF NOT EXISTS idx_mfs_shop ON mfs_accounts(shop_id);
 
 -- ৬. সিকিউরিটি পলিসি (Row Level Security - RLS)
 ALTER TABLE shop_settings ENABLE ROW LEVEL SECURITY;
@@ -311,36 +307,6 @@ BEGIN
 END $$;
 
 ALTER PUBLICATION supabase_realtime ADD TABLE shop_settings, customers, inventory_items, mfs_accounts, transactions;
-
--- ৮. দোকানের প্রাথমিক তথ্য ইনসার্ট (${targetShopName})
-INSERT INTO shop_settings (
-    shop_id, shop_name, shop_subtitle, owner_name,
-    phone1, address, opening_cash_balance, admin_pin, logo_url, updated_at
-) VALUES (
-    '${targetShopId}',
-    '${targetShopName}',
-    '${targetSubtitle}',
-    '${targetOwner}',
-    '${targetPhone}',
-    '${targetAddress}',
-    ${targetCash},
-    '${targetPin}',
-    '${targetLogo}',
-    NOW()
-) ON CONFLICT (shop_id) DO UPDATE SET
-    shop_name = EXCLUDED.shop_name,
-    owner_name = EXCLUDED.owner_name,
-    phone1 = EXCLUDED.phone1,
-    admin_pin = EXCLUDED.admin_pin,
-    updated_at = NOW();
-
--- ৯. মোবাইল ব্যাংকিং এজেন্ট একাউন্টস
-INSERT INTO mfs_accounts (id, shop_id, provider, account_name, agent_number, balance, color)
-VALUES
-  ('mfs-bkash-${targetShopId}', '${targetShopId}', 'BKASH', 'বিকাশ এজেন্ট', '${targetPhone}', 10000, '#E2136E'),
-  ('mfs-nagad-${targetShopId}', '${targetShopId}', 'NAGAD', 'নগদ এজেন্ট', '${targetPhone}', 10000, '#F7941D'),
-  ('mfs-rocket-${targetShopId}', '${targetShopId}', 'ROCKET', 'রকেট এজেন্ট', '${targetPhone}', 5000, '#8C3494')
-ON CONFLICT (id) DO NOTHING;
 `;
   };
 
@@ -1467,7 +1433,7 @@ ON CONFLICT (id) DO NOTHING;`;
                       </li>
                     </ol>
                     <p className="text-[10px] text-emerald-400/90 pt-1">
-                      ✓ এটি স্বয়ংক্রিয়ভাবে shop_settings, transactions, customers, inventory_items, mfs_accounts টেবিল এবং রিয়েলটাইম লাইভ সিঙ্ক অ্যাক্টিভ করে দেবে।
+                      ✓ এটি শুধুমাত্র টেবিলের স্ট্রাকচার ও রিয়েলটাইম সিঙ্ক তৈরি করে। কোনো ডিফল্ট বা ডামি ডেটা ইনসার্ট করে না—আপনার দোকানের নাম, ঠিকানা, মালিকের নাম ও পিন নিচের ফর্মটি সাবমিট করলেই ডেটাবেজে সরাসরি সেভ হয়ে যাবে।
                     </p>
                   </div>
                 </div>
