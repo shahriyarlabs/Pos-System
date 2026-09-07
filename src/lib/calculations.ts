@@ -60,6 +60,30 @@ export function isToday(timestamp: string): boolean {
 }
 
 /**
+ * Today's Opening Cash = Previous Day's Closing Cash
+ * = Registration opening balance + (all past cash IN) - (all past cash OUT)
+ */
+function getPreviousDayClosingCash(
+  settings: ShopSettings,
+  transactions: Transaction[]
+): number {
+  // Base = the balance entered once at shop registration
+  let balance = Number(settings?.openingCashBalance || 0);
+
+  for (const trx of transactions) {
+    if (isToday(trx.timestamp)) continue; // skip today — counted separately
+
+    if (trx.type === 'INCOME' && trx.paymentMethod === 'CASH') {
+      balance += Number(trx.amount || 0);
+    } else if (trx.type === 'EXPENSE' && trx.paymentMethod === 'CASH') {
+      balance -= Number(trx.amount || 0);
+    }
+  }
+
+  return Number(balance.toFixed(2));
+}
+
+/**
  * Performs full mathematical audit & reconciliation of all accounts
  */
 export function auditAllCalculations(
@@ -69,7 +93,8 @@ export function auditAllCalculations(
   customers: Customer[],
   inventory: InventoryItem[]
 ): CalculationAudit {
-  const openingCash = Number(settings?.openingCashBalance || 0);
+  // Today's opening = Yesterday's closing (registration balance + all past cash movements)
+  const openingCash = getPreviousDayClosingCash(settings, transactions);
 
   // 1. Transactions breakdown
   let cashSalesIncome = 0;
@@ -126,7 +151,7 @@ export function auditAllCalculations(
   }
 
   // 3. Cash in Hand Calculation:
-  // Inflow = Opening Cash + Cash from Sales + Cash from Due Recovery + MFS Cash-In Physical Cash
+  // Inflow = Yesterday's Closing + Cash Sales + Due Recovery + MFS Cash-In Physical Cash
   const totalCashInflow = openingCash + cashSalesIncome + dueCollectedInCash + mfsCashInReceived;
   // Outflow = Cash Expenses + MFS Cash-Out given to customers
   const totalCashOutflow = cashExpenses + mfsCashOutPaid;

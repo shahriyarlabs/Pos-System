@@ -62,6 +62,49 @@ export const Dashboard: React.FC<DashboardProps> = ({
     [settings, transactions, mfsAccounts, customers, inventory]
   );
 
+  // 2. Period-aware OPENING balance: = closing cash of the day BEFORE the selected period started.
+  // 'আজ' → yesterday's closing | 'গতকাল' → day-before-yesterday's closing | 'সব' → registration balance
+  const periodOpeningCash = useMemo(() => {
+    const base = Number(settings?.openingCashBalance || 0);
+
+    if (period === 'all') return base; // from the very beginning → registration balance
+
+    const now = new Date();
+    let startTime: number;
+
+    if (period === 'today') {
+      startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    } else if (period === 'yesterday') {
+      startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).getTime();
+    } else if (period === 'week') {
+      startTime = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+    } else {
+      startTime = new Date(now.getFullYear(), now.getMonth(), 1).getTime(); // 1st of month
+    }
+
+    let balance = base;
+    for (let i = 0; i < transactions.length; i++) {
+      const t = transactions[i];
+      if (new Date(t.timestamp).getTime() >= startTime) continue; // only transactions BEFORE the period
+      if (t.type === 'INCOME' && t.paymentMethod === 'CASH') balance += Number(t.amount || 0);
+      else if (t.type === 'EXPENSE' && t.paymentMethod === 'CASH') balance -= Number(t.amount || 0);
+    }
+
+    return Number(balance.toFixed(2));
+  }, [transactions, settings, period]);
+
+  // 3. Dynamic label so it's clear which day's opening balance is shown
+  const openingLabel =
+    period === 'today'
+      ? 'আজকের প্রারম্ভিক'
+      : period === 'yesterday'
+      ? 'গতকালের প্রারম্ভিক'
+      : period === 'week'
+      ? '৭ দিন আগের ব্যালেন্স'
+      : period === 'month'
+      ? 'মাসের প্রারম্ভিক'
+      : 'শুরুর ব্যালেন্স';
+
   // Dynamic counts for each period tab (Memoized)
   const periodCounts = useMemo(() => {
     const now = new Date();
@@ -190,7 +233,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            স্বত্বাধিকারী: <strong className="text-slate-700">{settings.ownerName || 'শপ ওনার'}</strong> • সরাসরি ক্লাউড ডাটাবেজে সংরক্ষিত রিয়েল-টাইম আয়, ব্যয়, নগদ ক্যাশ ও বাকি খাতা
+            স্বত্বাধিকারী: <strong className="text-slate-700">{settings.ownerName || 'শপ ওনার'}</strong> • সরাসরি ক্লাউড ডাটাবেজে সংরক্ষিত রিয়েল-টাইম আয়, ব্যয়, নগদ ক্যাশ ও বাকি খাতা
           </p>
         </div>
 
@@ -237,7 +280,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="flex items-center gap-2.5 flex-wrap">
           <span className="flex items-center gap-1.5 text-emerald-400 font-bold bg-emerald-950/80 px-2.5 py-1 rounded-lg border border-emerald-700">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>ক্লাউড অটো-সেভ সক্রিয়</span>
+            <span>ক্লাউড অটো-সেভ সক্রিয়</span>
           </span>
           <span className="text-slate-500 hidden sm:inline">•</span>
           <span className="text-slate-300">
@@ -269,7 +312,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-white p-5 rounded-2xl border border-amber-200 shadow-xs relative overflow-hidden group">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-amber-900 uppercase tracking-wider">
-              হাতে নগদ (ক্যাশ ড্রয়ার)
+              হাতে নগদ (ক্যাশ ড্রয়ার)
             </span>
             <div className="p-2 bg-amber-500 text-white rounded-xl shadow-sm">
               <Wallet className="w-5 h-5" />
@@ -280,7 +323,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               {formatTaka(audit.netCashInHand)}
             </div>
             <div className="text-[11px] text-slate-600 mt-1 flex items-center justify-between">
-              <span>প্রারম্ভিক: {formatTaka(audit.openingCash)}</span>
+              <span>{openingLabel}: {formatTaka(periodOpeningCash)}</span>
               <button
                 type="button"
                 onClick={onOpenCalculationAudit}
@@ -291,7 +334,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
         </div>
-
         {/* 2. Total Income Card */}
         <div className="bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-white p-5 rounded-2xl border border-emerald-200 shadow-xs relative overflow-hidden">
           <div className="flex items-center justify-between">
