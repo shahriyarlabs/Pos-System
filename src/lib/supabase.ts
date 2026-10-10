@@ -9,7 +9,6 @@ const CONFIG_KEY = 'bdc_supabase_config';
 export const DEFAULT_SUPABASE_URL = '';
 export const DEFAULT_SUPABASE_ANON_KEY = '';
 
-<<<<<<< HEAD
 /**
  * Normalizes user-entered Supabase Project URLs.
  * Handles missing https://, trailing slashes, spaces, quotes.
@@ -36,11 +35,6 @@ export function normalizeSupabaseKey(key?: string): string {
 export function getStoredSupabaseConfig(): SupabaseConfig {
   const envUrl = normalizeSupabaseUrl((import.meta as any).env?.VITE_SUPABASE_URL || '');
   const envKey = normalizeSupabaseKey((import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '');
-=======
-export function getStoredSupabaseConfig(): SupabaseConfig {
-  const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
-  const envKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
 
   try {
     const raw = localStorage.getItem(CONFIG_KEY);
@@ -57,13 +51,8 @@ export function getStoredSupabaseConfig(): SupabaseConfig {
           autoSync: true,
         };
       }
-<<<<<<< HEAD
       const url = normalizeSupabaseUrl(parsed.url || envUrl || '');
       const anonKey = normalizeSupabaseKey(parsed.anonKey || envKey || '');
-=======
-      const url = (parsed.url || envUrl || '').trim();
-      const anonKey = (parsed.anonKey || envKey || '').trim();
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
       return {
         url,
         anonKey,
@@ -74,13 +63,8 @@ export function getStoredSupabaseConfig(): SupabaseConfig {
     }
   } catch {}
 
-<<<<<<< HEAD
   const url = normalizeSupabaseUrl(envUrl || '');
   const anonKey = normalizeSupabaseKey(envKey || '');
-=======
-  const url = (envUrl || '').trim();
-  const anonKey = (envKey || '').trim();
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
   return {
     url,
     anonKey,
@@ -93,7 +77,6 @@ export function getStoredSupabaseConfig(): SupabaseConfig {
 export function saveStoredSupabaseConfig(config: Partial<SupabaseConfig>): void {
   try {
     const current = getStoredSupabaseConfig();
-<<<<<<< HEAD
     const cleanUrl = config.url !== undefined ? normalizeSupabaseUrl(config.url) : current.url;
     const cleanKey = config.anonKey !== undefined ? normalizeSupabaseKey(config.anonKey) : current.anonKey;
     const updated = {
@@ -103,9 +86,6 @@ export function saveStoredSupabaseConfig(config: Partial<SupabaseConfig>): void 
       anonKey: cleanKey,
       isConnected: Boolean(cleanUrl && cleanKey),
     };
-=======
-    const updated = { ...current, ...config };
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
     localStorage.setItem(CONFIG_KEY, JSON.stringify(updated));
     cachedClient = null;
     currentUrl = '';
@@ -126,13 +106,8 @@ export function clearStoredSupabaseConfig(): void {
 
 export function getSupabaseClient(url?: string, anonKey?: string): SupabaseClient | null {
   const stored = getStoredSupabaseConfig();
-<<<<<<< HEAD
   const targetUrl = normalizeSupabaseUrl(url || stored.url || '');
   const targetKey = normalizeSupabaseKey(anonKey || stored.anonKey || '');
-=======
-  const targetUrl = (url || stored.url || '').trim();
-  const targetKey = (anonKey || stored.anonKey || '').trim();
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
 
   if (!targetUrl || !targetKey) {
     return null;
@@ -155,7 +130,6 @@ export function getSupabaseClient(url?: string, anonKey?: string): SupabaseClien
   }
 }
 
-<<<<<<< HEAD
 // Test connection with smart diagnostics for "TypeError: Failed to fetch"
 export async function testSupabaseConnection(
   url: string,
@@ -201,22 +175,6 @@ export async function testSupabaseConnection(
         errMsg.includes('relation "public.shop_settings" does not exist') ||
         errMsg.includes('does not exist') ||
         (shopErr as any).code === '42P01'
-=======
-// Test connection
-export async function testSupabaseConnection(
-  url: string,
-  anonKey: string
-): Promise<{ success: boolean; message: string }> {
-  try {
-    const client = createClient(url, anonKey, {
-      auth: { persistSession: false },
-    });
-    const { error } = await client.from('transactions').select('id').limit(1);
-    if (error && error.code !== 'PGRST116') {
-      if (
-        error.message.includes('relation "public.transactions" does not exist') ||
-        error.code === '42P01'
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
       ) {
         return {
           success: true,
@@ -224,7 +182,6 @@ export async function testSupabaseConnection(
             'Supabase প্রজেক্ট সফলভাবে সংযুক্ত হয়েছে! তবে টেবিলগুলো এখনও তৈরি করা হয়নি। নিচে দেওয়া SQL স্ক্রিপ্টটি রান করুন।',
         };
       }
-<<<<<<< HEAD
       return { success: false, message: `সংযোগে ত্রুটি: ${errMsg}` };
     }
 
@@ -251,13 +208,6 @@ export async function testSupabaseConnection(
       };
     }
     return { success: false, message: `সংযোগে ত্রুটি: ${errMsg || 'Unknown error'}` };
-=======
-      return { success: false, message: `সংযোগে সমস্যা: ${error.message}` };
-    }
-    return { success: true, message: 'Supabase সফলভাবে সংযুক্ত এবং ডেটাবেজ প্রস্তুত!' };
-  } catch (err: any) {
-    return { success: false, message: `সংযোগে ত্রুটি: ${err.message || 'Unknown error'}` };
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
   }
 }
 
@@ -691,7 +641,6 @@ export async function pullAllFromSupabase(
     let settings: Partial<ShopSettings> | undefined = undefined;
     if (setRes.data) {
       let logo: string | undefined = undefined;
-<<<<<<< HEAD
       let signature: string | undefined = undefined;
       let signatureTitle: string | undefined = undefined;
       let showSignature = true;
@@ -699,8 +648,6 @@ export async function pullAllFromSupabase(
       let paperSize: 'laser_half_a4' | 'laser_quarter_a4' | 'laser_full_a4' | 'thermal_pos' = 'laser_half_a4';
       let copiesCount: 1 | 2 = 2;
       let greeting = 'বিসমিল্লাহির রাহমানির রাহিম';
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
       let footerNote = setRes.data.receipt_footer_note || '';
 
       if (footerNote.startsWith('METADATA:')) {
@@ -708,7 +655,6 @@ export async function pullAllFromSupabase(
           const meta = JSON.parse(footerNote.replace('METADATA:', ''));
           logo = meta.logo || undefined;
           footerNote = meta.note || '';
-<<<<<<< HEAD
           signature = meta.signature || undefined;
           signatureTitle = meta.signatureTitle || undefined;
           if (meta.showSignature !== undefined) showSignature = Boolean(meta.showSignature);
@@ -716,8 +662,6 @@ export async function pullAllFromSupabase(
           if (meta.paperSize) paperSize = meta.paperSize;
           if (meta.copiesCount) copiesCount = meta.copiesCount;
           if (meta.greeting !== undefined) greeting = meta.greeting;
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
         } catch {}
       } else if (
         setRes.data.email &&
@@ -741,7 +685,6 @@ export async function pullAllFromSupabase(
         adminPin: setRes.data.admin_pin || '1235',
         adminPassword: setRes.data.admin_pin || '1235',
         shopKey,
-<<<<<<< HEAD
         voucherSignature: signature,
         voucherSignatureTitle: signatureTitle || 'স্বত্বাধিকারী / অনুমোদিত স্বাক্ষর',
         showSignatureOnReceipt: showSignature,
@@ -749,8 +692,6 @@ export async function pullAllFromSupabase(
         voucherPaperSize: paperSize,
         voucherCopiesCount: copiesCount,
         receiptGreeting: greeting,
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
       };
     }
 
@@ -1301,7 +1242,6 @@ export async function updateSupabaseSettings(
   settings: ShopSettings,
   shopKey: string
 ): Promise<{ success: boolean }> {
-<<<<<<< HEAD
   // Store logo, signatures, paper format, and notes safely in receipt_footer_note with metadata prefix
   const metadataPayload = {
     logo: settings.shopLogo || '',
@@ -1315,15 +1255,6 @@ export async function updateSupabaseSettings(
     greeting: settings.receiptGreeting || 'বিসমিল্লাহির রাহমানির রাহিম',
   };
   const footerNotePayload = `METADATA:${JSON.stringify(metadataPayload)}`;
-=======
-  // If logo is present, store it safely in receipt_footer_note with metadata prefix
-  const footerNotePayload = settings.shopLogo
-    ? `METADATA:${JSON.stringify({
-        logo: settings.shopLogo,
-        note: settings.receiptFooterNote || '',
-      })}`
-    : settings.receiptFooterNote || '';
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
 
   const { error } = await client.from('shop_settings').upsert({
     shop_id: shopKey,
@@ -1535,7 +1466,6 @@ export async function loginShopFromSupabase(
       .select('*');
 
     if (error) {
-<<<<<<< HEAD
       const errMsg = error.message || '';
       if (
         errMsg.includes('relation "public.shop_settings" does not exist') ||
@@ -1556,12 +1486,6 @@ export async function loginShopFromSupabase(
         );
       }
       throw new Error(`ডাটাবেজ সমস্যা: ${errMsg}`);
-=======
-      if (error.message?.includes('does not exist') || (error as any).code === '42P01') {
-        throw new Error('ডাটাবেজে shop_settings টেবিল পাওয়া যায়নি। দয়া করে নিচে প্রদর্শিত SQL স্ক্রিপ্টটি Supabase SQL Editor-এ রান করুন।');
-      }
-      throw new Error(`ডাটাবেজ সমস্যা: ${error.message}`);
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
     }
 
     if (!allShops || allShops.length === 0) {

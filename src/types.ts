@@ -18,10 +18,7 @@ export type ExpenseCategory =
   | 'internet_bill'
   | 'tea_snacks'
   | 'maintenance'
-<<<<<<< HEAD
   | 'owner_drawing'
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
   | 'other_expense';
 
 export type PaymentMethod = 'CASH' | 'BKASH' | 'NAGAD' | 'ROCKET' | 'DUE';
@@ -143,11 +140,7 @@ export interface ShopSettings {
   email: string;
   openingCashBalance: number;
   receiptFooterNote: string;
-<<<<<<< HEAD
   receiptType: 'standard' | 'thermal' | 'quarter_a4' | 'laser_a4' | 'laser_half' | 'laser_half_a4' | 'laser_quarter_a4' | 'laser_full_a4' | 'thermal_pos';
-=======
-  receiptType: 'standard' | 'thermal' | 'quarter_a4';
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
   adminPin: string;
   adminUsername?: string;
   adminPassword?: string;
@@ -155,7 +148,6 @@ export interface ShopSettings {
   shopKey: string;
   isCounterLocked?: boolean;
   requireLoginForEntireApp?: boolean;
-<<<<<<< HEAD
 
   // Voucher, Signature & Laser/Thermal Printer Settings
   voucherSignature?: string; // Signature image (base64 data URI or image URL)
@@ -165,8 +157,6 @@ export interface ShopSettings {
   voucherPaperSize?: 'laser_half_a4' | 'laser_quarter_a4' | 'laser_full_a4' | 'thermal_pos';
   voucherCopiesCount?: 1 | 2; // 1 copy or 2 copies (Customer Copy + Office Copy)
   receiptGreeting?: string; // Top greeting text (e.g. "বিসমিল্লাহির রাহমানির রাহিম")
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
 }
 
 export interface SupabaseConfig {

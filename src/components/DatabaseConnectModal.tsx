@@ -14,11 +14,8 @@ import {
   RefreshCw,
   Terminal,
   Unlink,
-<<<<<<< HEAD
   Smartphone,
   QrCode,
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
 } from 'lucide-react';
 import {
   testSupabaseConnection,
@@ -37,10 +34,7 @@ interface DatabaseConnectModalProps {
   onDisconnect: () => void;
   shopKey: string;
   onUpdateShopKey?: (key: string) => void;
-<<<<<<< HEAD
   onOpenConnectDevice?: () => void;
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
 }
 
 export const DatabaseConnectModal: React.FC<DatabaseConnectModalProps> = ({
@@ -51,10 +45,7 @@ export const DatabaseConnectModal: React.FC<DatabaseConnectModalProps> = ({
   onDisconnect,
   shopKey,
   onUpdateShopKey,
-<<<<<<< HEAD
   onOpenConnectDevice,
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
 }) => {
   const [url, setUrl] = useState(currentConfig.url || '');
   const [anonKey, setAnonKey] = useState(currentConfig.anonKey || '');
@@ -207,7 +198,6 @@ export const DatabaseConnectModal: React.FC<DatabaseConnectModalProps> = ({
           </button>
         </div>
 
-<<<<<<< HEAD
         {/* New Device Share Banner */}
         {currentConfig.isConnected && onOpenConnectDevice && (
           <div className="bg-emerald-950/60 border-b border-emerald-800/60 px-5 py-3 flex items-center justify-between gap-3 text-xs text-emerald-200">
@@ -231,8 +221,6 @@ export const DatabaseConnectModal: React.FC<DatabaseConnectModalProps> = ({
           </div>
         )}
 
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
         {/* Content Body */}
         <div className="p-6 overflow-y-auto space-y-5 text-slate-800">
           {/* Status feedback box */}

@@ -181,11 +181,7 @@ export const CustomerDueLedger: React.FC<CustomerDueLedgerProps> = ({
           </div>
           <button
             onClick={() => setIsAddCustomerOpen(true)}
-<<<<<<< HEAD
             className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
-=======
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-xs transition"
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
           >
             <Plus className="w-4 h-4" />
             <span>নতুন কাস্টমার যোগ</span>
@@ -193,7 +189,6 @@ export const CustomerDueLedger: React.FC<CustomerDueLedgerProps> = ({
         </div>
       </div>
 
-<<<<<<< HEAD
       {/* Due Ledger Cash Rule Banner */}
       <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-3.5 text-xs text-amber-900 flex items-start gap-2.5 shadow-xs">
         <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
@@ -203,8 +198,6 @@ export const CustomerDueLedger: React.FC<CustomerDueLedgerProps> = ({
         </div>
       </div>
 
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
         <div className="relative w-full sm:w-80">
@@ -529,15 +522,9 @@ export const CustomerDueLedger: React.FC<CustomerDueLedgerProps> = ({
                 <label className="block text-xs font-bold text-slate-700 mb-1">পেমেন্ট মাধ্যম *</label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-<<<<<<< HEAD
                     { id: 'CASH', label: 'নগদ ক্যাশ (ড্রয়ারে যোগ হবে)' },
                     { id: 'BKASH', label: 'বিকাশ ওয়ালেট' },
                     { id: 'NAGAD', label: 'নগদ ওয়ালেট' },
-=======
-                    { id: 'CASH', label: 'নগদ ক্যাশ' },
-                    { id: 'BKASH', label: 'বিকাশ' },
-                    { id: 'NAGAD', label: 'নগদ MFS' },
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
                   ].map((m) => (
                     <button
                       type="button"
@@ -553,14 +540,11 @@ export const CustomerDueLedger: React.FC<CustomerDueLedgerProps> = ({
                     </button>
                   ))}
                 </div>
-<<<<<<< HEAD
                 <p className="text-[11px] text-slate-500 mt-1">
                   {paymentMethod === 'CASH'
                     ? '✓ নগদ ক্যাশে পরিশোধ করলে আপনার ড্রয়ারের হাতে নগদ টাকা সরাসরি বৃদ্ধি পাবে।'
                     : '✓ ডিজিটাল ওয়ালেটে পরিশোধ করলে সংশ্লিষ্ট MFS ওয়ালেট ব্যালেন্স বাড়বে, ড্রয়ার ক্যাশ অপরিবর্তিত থাকবে।'}
                 </p>
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
               </div>
 
               <div>

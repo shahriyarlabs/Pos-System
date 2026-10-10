@@ -20,10 +20,7 @@ import {
   Wallet,
   Users,
   Package,
-<<<<<<< HEAD
   Coins,
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
 } from 'lucide-react';
 
 interface CalculationAuditModalProps {
@@ -90,7 +87,6 @@ export const CalculationAuditModal: React.FC<CalculationAuditModalProps> = ({
             <div className="space-y-2 text-xs sm:text-sm text-slate-700">
               {/* Inflow */}
               <div className="flex justify-between items-center py-1">
-<<<<<<< HEAD
                 <div>
                   <span className="flex items-center gap-1.5 text-slate-700 font-medium">
                     <PlusCircle className="w-3.5 h-3.5 text-emerald-500" />
@@ -106,13 +102,6 @@ export const CalculationAuditModal: React.FC<CalculationAuditModalProps> = ({
                   </span>
                 </div>
                 <span className="font-bold text-slate-900">{formatTaka(audit.openingCash)}</span>
-=======
-                <span className="flex items-center gap-1.5 text-slate-600">
-                  <PlusCircle className="w-3.5 h-3.5 text-emerald-500" />
-                  সকালের প্রারম্ভিক ক্যাশ (Opening Balance)
-                </span>
-                <span className="font-semibold text-slate-800">{formatTaka(audit.openingCash)}</span>
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
               </div>
 
               <div className="flex justify-between items-center py-1">
@@ -124,7 +113,6 @@ export const CalculationAuditModal: React.FC<CalculationAuditModalProps> = ({
               </div>
 
               <div className="flex justify-between items-center py-1">
-<<<<<<< HEAD
                 <div>
                   <span className="flex items-center gap-1.5 text-slate-600 font-medium">
                     <PlusCircle className="w-3.5 h-3.5 text-emerald-500" />
@@ -134,12 +122,6 @@ export const CalculationAuditModal: React.FC<CalculationAuditModalProps> = ({
                     (বাকি বিক্রিতে ক্যাশ বাড়ে না; গ্রাহক পরিশোধ করলেই ড্রয়ারে নগদ ক্যাশ যুক্ত হয়)
                   </span>
                 </div>
-=======
-                <span className="flex items-center gap-1.5 text-slate-600">
-                  <PlusCircle className="w-3.5 h-3.5 text-emerald-500" />
-                  আজকের বাকি নগদ আদায় (Due Recovery)
-                </span>
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
                 <span className="font-semibold text-emerald-600">+{formatTaka(audit.dueCollectedInCash)}</span>
               </div>
 
@@ -165,7 +147,6 @@ export const CalculationAuditModal: React.FC<CalculationAuditModalProps> = ({
                 <span className="font-semibold text-rose-600">-{formatTaka(audit.cashExpenses)}</span>
               </div>
 
-<<<<<<< HEAD
               <div className="flex justify-between items-center py-1 bg-amber-50/60 px-1.5 rounded-lg border border-amber-200/60">
                 <div>
                   <span className="flex items-center gap-1.5 text-amber-900 font-semibold">
@@ -179,8 +160,6 @@ export const CalculationAuditModal: React.FC<CalculationAuditModalProps> = ({
                 <span className="font-bold text-amber-900">-{formatTaka(audit.ownerCashWithdrawals)}</span>
               </div>
 
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
               <div className="flex justify-between items-center py-1">
                 <span className="flex items-center gap-1.5 text-slate-600">
                   <MinusCircle className="w-3.5 h-3.5 text-rose-500" />
@@ -292,7 +271,6 @@ export const CalculationAuditModal: React.FC<CalculationAuditModalProps> = ({
               </div>
             </div>
           </div>
-<<<<<<< HEAD
 
           {/* 5. Core Drawer & Due Ledger Rules Notice */}
           <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-900 space-y-2">
@@ -315,8 +293,6 @@ export const CalculationAuditModal: React.FC<CalculationAuditModalProps> = ({
               </div>
             </div>
           </div>
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
         </div>
 
         {/* Modal Footer */}

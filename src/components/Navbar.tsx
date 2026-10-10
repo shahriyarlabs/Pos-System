@@ -15,11 +15,8 @@ import {
   LogOut,
   User,
   RefreshCw,
-<<<<<<< HEAD
   QrCode,
   Settings,
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
 } from 'lucide-react';
 import { ShopSettings, SupabaseConfig, UserSession } from '../types';
 import { formatTaka } from '../lib/calculations';
@@ -37,10 +34,7 @@ interface NavbarProps {
   settings: ShopSettings;
   supabaseConfig?: SupabaseConfig;
   onOpenDatabaseModal: () => void;
-<<<<<<< HEAD
   onOpenConnectDevice?: () => void;
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
   currentUser?: UserSession | null;
   onLogout?: () => void;
   onRefreshData?: () => void;
@@ -60,10 +54,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   settings,
   supabaseConfig,
   onOpenDatabaseModal,
-<<<<<<< HEAD
   onOpenConnectDevice,
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
   currentUser,
   onLogout,
   onRefreshData,
@@ -104,15 +95,12 @@ export const Navbar: React.FC<NavbarProps> = ({
       labelEn: 'Reports',
       icon: FileText,
     },
-<<<<<<< HEAD
     {
       id: 'settings',
       labelBn: 'সেটিংস ও ভাউচার',
       labelEn: 'Settings',
       icon: Settings,
     },
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
   ];
 
   const isConnected = Boolean(supabaseConfig?.isConnected && supabaseConfig?.url);
@@ -148,7 +136,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </button>
 
-<<<<<<< HEAD
             {/* Quick Share / Connect New Device Button */}
             {isConnected && onOpenConnectDevice && (
               <button
@@ -162,8 +149,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
             {isConnected && (
               <span className="hidden md:inline-flex items-center gap-1 text-[10px] text-emerald-300 font-mono bg-emerald-950/80 px-2 py-0.5 rounded-md border border-emerald-700">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>

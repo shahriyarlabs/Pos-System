@@ -7,23 +7,16 @@ import {
 } from '../types';
 
 export interface CalculationAudit {
-<<<<<<< HEAD
   openingCash: number; // Previous day's closing cash (আজকের প্রারম্ভিক ক্যাশ = পূর্ববর্তী দিনের ক্যাশ)
   initialRegistrationCash: number; // দোকান রেজিস্ট্রেশন প্রারম্ভিক ক্যাশ
   pastDaysNetCash: number; // পূর্ববর্তী দিনগুলোর নেট ক্যাশ ব্যালেন্স
-=======
-  openingCash: number;
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
   cashSalesIncome: number;
   dueCollectedInCash: number;
   mfsCashInReceived: number;
   totalCashInflow: number;
 
   cashExpenses: number;
-<<<<<<< HEAD
   ownerCashWithdrawals: number; // মালিকের ড্রয়ার উত্তোলন (শুধু ক্যাশ কমবে, MFS ব্যাংকিং নয়)
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
   mfsCashOutPaid: number;
   totalCashOutflow: number;
 
@@ -34,10 +27,7 @@ export interface CalculationAudit {
   totalOperatingExpenses: number;
   mfsCommissionsEarned: number;
   netOperatingProfit: number;
-<<<<<<< HEAD
   todayDueSalesIncome: number; // আজকের বাকি বিক্রয় (যা ড্রয়ার ক্যাশে যোগ হয়নি)
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
 
   // Digital & Other Balances
   digitalIncomeBkash: number;
@@ -74,7 +64,6 @@ export function isToday(timestamp: string): boolean {
 }
 
 /**
-<<<<<<< HEAD
  * Checks if a transaction date is strictly prior to today
  */
 export function isBeforeToday(timestamp: string): boolean {
@@ -83,40 +72,14 @@ export function isBeforeToday(timestamp: string): boolean {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   return date.getTime() < startOfToday;
-=======
- * Today's Opening Cash = Previous Day's Closing Cash
- * = Registration opening balance + (all past cash IN) - (all past cash OUT)
- */
-function getPreviousDayClosingCash(
-  settings: ShopSettings,
-  transactions: Transaction[]
-): number {
-  // Base = the balance entered once at shop registration
-  let balance = Number(settings?.openingCashBalance || 0);
-
-  for (const trx of transactions) {
-    if (isToday(trx.timestamp)) continue; // skip today — counted separately
-
-    if (trx.type === 'INCOME' && trx.paymentMethod === 'CASH') {
-      balance += Number(trx.amount || 0);
-    } else if (trx.type === 'EXPENSE' && trx.paymentMethod === 'CASH') {
-      balance -= Number(trx.amount || 0);
-    }
-  }
-
-  return Number(balance.toFixed(2));
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
 }
 
 /**
  * Performs full mathematical audit & reconciliation of all accounts
-<<<<<<< HEAD
  * রুল: হাতে নগদ হিসাব (Cash in Drawer Formula) হবে পূর্ববর্তী দিনের ক্যাশ।
  * প্রারম্ভিক ক্যাশ শুধুমাত্র দোকান রেজিস্ট্রেশন এর দিন দিলেই হবে।
  * মালিকের উত্তোলন: শুধু ড্রয়ারের নগদ ক্যাশ কমবে (MFS এ কোনো প্রভাব নেই)।
  * বাকী খাতা: বাকি বিক্রিতে ক্যাশ বাড়ে না, গ্রাহক পরিশোধ করলেই কেবল ড্রয়ারে ক্যাশ বাড়ে।
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
  */
 export function auditAllCalculations(
   settings: ShopSettings,
@@ -125,7 +88,6 @@ export function auditAllCalculations(
   customers: Customer[],
   inventory: InventoryItem[]
 ): CalculationAudit {
-<<<<<<< HEAD
   // দোকান রেজিস্ট্রেশন এর প্রারম্ভিক ক্যাশ
   const initialRegistrationCash = Number(settings?.openingCashBalance || 0);
 
@@ -138,15 +100,6 @@ export function auditAllCalculations(
   let todayDueSalesIncome = 0;
   let cashExpenses = 0;
   let ownerCashWithdrawals = 0;
-=======
-  // Today's opening = Yesterday's closing (registration balance + all past cash movements)
-  const openingCash = getPreviousDayClosingCash(settings, transactions);
-
-  // 1. Transactions breakdown
-  let cashSalesIncome = 0;
-  let dueCollectedInCash = 0;
-  let cashExpenses = 0;
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
   let digitalIncomeBkash = 0;
   let digitalIncomeNagad = 0;
   let digitalIncomeRocket = 0;
@@ -155,7 +108,6 @@ export function auditAllCalculations(
 
   for (const trx of transactions) {
     const isTrxToday = isToday(trx.timestamp);
-<<<<<<< HEAD
     const isTrxBeforeToday = isBeforeToday(trx.timestamp);
 
     // পূর্ববর্তী দিনগুলোর ক্যাশ হিসাব (বিগত দিনের সমাপনী ক্যাশ নির্ধারণের জন্য)
@@ -231,42 +183,12 @@ export function auditAllCalculations(
           if (trx.paymentMethod === 'CASH') {
             cashExpenses += trx.amount;
           }
-=======
-    // Income
-    if (trx.type === 'INCOME') {
-      if (isTrxToday) {
-        totalSalesAndServicesIncome += trx.amount;
-
-        if (trx.paymentMethod === 'CASH') {
-          if (trx.category === 'other_income' && trx.categoryLabelBn?.includes('বাকি')) {
-            dueCollectedInCash += trx.amount;
-          } else {
-            cashSalesIncome += trx.amount;
-          }
-        } else if (trx.paymentMethod === 'BKASH') {
-          digitalIncomeBkash += trx.amount;
-        } else if (trx.paymentMethod === 'NAGAD') {
-          digitalIncomeNagad += trx.amount;
-        } else if (trx.paymentMethod === 'ROCKET') {
-          digitalIncomeRocket += trx.amount;
-        }
-      }
-    } else if (trx.type === 'EXPENSE') {
-      if (isTrxToday) {
-        totalOperatingExpenses += trx.amount;
-        if (trx.paymentMethod === 'CASH') {
-          cashExpenses += trx.amount;
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
         }
       }
     }
   }
 
-<<<<<<< HEAD
   // 2. MFS Calculations (আজকের)
-=======
-  // 2. MFS Calculations
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
   let mfsCashInReceived = 0;
   let mfsCashOutPaid = 0;
   let mfsCommissionsEarned = 0;
@@ -279,7 +201,6 @@ export function auditAllCalculations(
     mfsCashOutPaid += Number(acc.cashOutToday || 0);
   }
 
-<<<<<<< HEAD
   // 3. পূর্ববর্তী দিনের ক্যাশ ও আজকের প্রারম্ভিক ক্যাশ হিসাব:
   // প্রারম্ভিক ক্যাশ শুধুমাত্র দোকান রেজিস্ট্রেশনের দিন দিলেই হয়।
   // এরপর প্রতিদিন সকালের প্রারম্ভিক ক্যাশ = পূর্ববর্তী দিনের সমাপনী ক্যাশ।
@@ -296,27 +217,11 @@ export function auditAllCalculations(
 
   // 5. Net Operating Profit:
   // Revenue (Services + Sales + MFS Commission) - Operating Expenses
-=======
-  // 3. Cash in Hand Calculation:
-  // Inflow = Yesterday's Closing + Cash Sales + Due Recovery + MFS Cash-In Physical Cash
-  const totalCashInflow = openingCash + cashSalesIncome + dueCollectedInCash + mfsCashInReceived;
-  // Outflow = Cash Expenses + MFS Cash-Out given to customers
-  const totalCashOutflow = cashExpenses + mfsCashOutPaid;
-  // Net Cash in Drawer
-  const netCashInHand = Number((totalCashInflow - totalCashOutflow).toFixed(2));
-
-  // 4. Net Operating Profit:
-  // Revenue (Services + Sales + MFS Commission) - Expenses
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
   const netOperatingProfit = Number(
     (totalSalesAndServicesIncome + mfsCommissionsEarned - totalOperatingExpenses).toFixed(2)
   );
 
-<<<<<<< HEAD
   // 6. Customer Dues
-=======
-  // 5. Customer Dues
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
   let totalPendingCustomerDues = 0;
   let activeDueCustomersCount = 0;
   for (const cust of customers) {
@@ -328,11 +233,7 @@ export function auditAllCalculations(
   }
   totalPendingCustomerDues = Number(totalPendingCustomerDues.toFixed(2));
 
-<<<<<<< HEAD
   // 7. Inventory Valuation
-=======
-  // 6. Inventory Valuation
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
   let totalInventoryPurchaseValue = 0;
   let totalInventoryRetailValue = 0;
   let lowStockItemsCount = 0;
@@ -355,11 +256,7 @@ export function auditAllCalculations(
     (totalInventoryRetailValue - totalInventoryPurchaseValue).toFixed(2)
   );
 
-<<<<<<< HEAD
   // 8. Total Business Liquid Assets:
-=======
-  // 7. Total Business Liquid Assets:
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
   // Physical Cash + MFS Balances + Market Dues (Receivables) + Stock Purchase Value
   const totalBusinessLiquidAssets = Number(
     (
@@ -371,11 +268,8 @@ export function auditAllCalculations(
   );
 
   return {
-<<<<<<< HEAD
     initialRegistrationCash: Number(initialRegistrationCash.toFixed(2)),
     pastDaysNetCash: Number(pastDaysNetCash.toFixed(2)),
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
     openingCash,
     cashSalesIncome: Number(cashSalesIncome.toFixed(2)),
     dueCollectedInCash: Number(dueCollectedInCash.toFixed(2)),
@@ -383,10 +277,7 @@ export function auditAllCalculations(
     totalCashInflow: Number(totalCashInflow.toFixed(2)),
 
     cashExpenses: Number(cashExpenses.toFixed(2)),
-<<<<<<< HEAD
     ownerCashWithdrawals: Number(ownerCashWithdrawals.toFixed(2)),
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
     mfsCashOutPaid: Number(mfsCashOutPaid.toFixed(2)),
     totalCashOutflow: Number(totalCashOutflow.toFixed(2)),
 
@@ -396,10 +287,7 @@ export function auditAllCalculations(
     totalOperatingExpenses: Number(totalOperatingExpenses.toFixed(2)),
     mfsCommissionsEarned: Number(mfsCommissionsEarned.toFixed(2)),
     netOperatingProfit,
-<<<<<<< HEAD
     todayDueSalesIncome: Number(todayDueSalesIncome.toFixed(2)),
-=======
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
 
     digitalIncomeBkash: Number(digitalIncomeBkash.toFixed(2)),
     digitalIncomeNagad: Number(digitalIncomeNagad.toFixed(2)),
@@ -432,8 +320,4 @@ export function formatTaka(amount: number): string {
 export function formatNumber(amount: number): string {
   const num = Number(amount || 0);
   return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d

@@ -46,7 +46,6 @@ const VoucherContent: React.FC<{
     className="h-full w-full flex flex-col text-slate-900 bg-white"
     style={{ fontSize: '9px', lineHeight: 1.45 }}
   >
-<<<<<<< HEAD
     {/* Top Greeting if configured */}
     {settings.receiptGreeting && (
       <div className="text-center font-bold text-slate-700 pb-0.5" style={{ fontSize: '8px' }}>
@@ -57,11 +56,6 @@ const VoucherContent: React.FC<{
     {/* Header */}
     <div className="text-center border-b-2 border-slate-900 pb-1.5 shrink-0">
       {settings.shopLogo && settings.showLogoOnReceipt !== false && (
-=======
-    {/* Header */}
-    <div className="text-center border-b-2 border-slate-900 pb-1.5 shrink-0">
-      {settings.shopLogo && (
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
         <img
           src={settings.shopLogo}
           alt={settings.shopName}
@@ -172,7 +166,6 @@ const VoucherContent: React.FC<{
 
     {/* Footer + signatures */}
     <div className="pt-2 border-t border-dashed border-slate-400 shrink-0">
-<<<<<<< HEAD
       {settings.receiptFooterNote && (
         <p className="text-center text-slate-600" style={{ fontSize: '7px' }}>
           {settings.receiptFooterNote}
@@ -201,24 +194,6 @@ const VoucherContent: React.FC<{
           </div>
         </div>
       )}
-=======
-      <p className="text-center text-slate-600" style={{ fontSize: '7px' }}>
-        {settings.receiptFooterNote}
-      </p>
-      <div
-        className="flex justify-between items-end mt-5 text-slate-500"
-        style={{ fontSize: '7.5px' }}
-      >
-        <div className="text-center">
-          <div className="w-10 border-b border-dotted border-slate-500 mb-0.5"></div>
-          গ্রাহক
-        </div>
-        <div className="text-center">
-          <div className="w-12 border-b border-dotted border-slate-500 mb-0.5"></div>
-          ক্যাশিয়ার
-        </div>
-      </div>
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
     </div>
   </div>
 );
@@ -432,7 +407,6 @@ export const ReportsAndReceipts: React.FC<ReportsAndReceiptsProps> = ({
                   <div className="flex h-full w-full">
                     {/* Left area: Empty A4 paper section */}
                     <div className="h-full flex-1 flex flex-col items-center justify-center text-slate-400 p-4 text-center select-none bg-slate-50/40 relative">
-<<<<<<< HEAD
                       <div className="border border-dashed border-slate-300 rounded-xl p-3 max-w-xs text-center">
                         <p className="text-[11px] font-semibold text-slate-600">
                           A4 ল্যান্ডস্কেপ পেপার ({settings.voucherCopiesCount === 2 || settings.voucherPaperSize === 'laser_quarter_a4' ? 'ডুয়েল কপি মোড' : 'কোয়ার্টার স্লিপ মোড'})
@@ -441,14 +415,6 @@ export const ReportsAndReceipts: React.FC<ReportsAndReceiptsProps> = ({
                           {settings.voucherCopiesCount === 2 || settings.voucherPaperSize === 'laser_quarter_a4'
                             ? 'পেপারের ডান অর্ধে পাশাপাশি ২টি কপি (গ্রাহক কপি ও দোকান রেকর্ড কপি) প্রিন্ট হবে।'
                             : 'প্রিন্ট করার সময় ভাউচারটি পেপারের ডান প্রান্তে ৩ ইঞ্চি অংশে প্রিন্ট হবে।'}
-=======
-                      <div className="border border-dashed border-slate-300 rounded-xl p-4 max-w-xs text-center">
-                        <p className="text-[11px] font-semibold text-slate-500">
-                          A4 ল্যান্ডস্কেপ পেপার (বাম অংশ খালি)
-                        </p>
-                        <p className="text-[9px] text-slate-400 mt-1">
-                          প্রিন্ট করার সময় ভাউচারটি পেপারের ডান প্রান্তে ৩ ইঞ্চি প্রশস্ত অংশে প্রিন্ট হবে।
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
                         </p>
                       </div>
 
@@ -463,7 +429,6 @@ export const ReportsAndReceipts: React.FC<ReportsAndReceiptsProps> = ({
                       </div>
                     </div>
 
-<<<<<<< HEAD
                     {/* Dual Copy: Office Copy if 2 copies enabled */}
                     {(settings.voucherCopiesCount === 2 || settings.voucherPaperSize === 'laser_quarter_a4') && (
                       <div
@@ -482,9 +447,6 @@ export const ReportsAndReceipts: React.FC<ReportsAndReceiptsProps> = ({
                     )}
 
                     {/* Right area: Customer Copy */}
-=======
-                    {/* Right area: Exactly 1/4 (approx 3 inch) voucher */}
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
                     <div
                       className="h-full p-2.5 bg-white shrink-0 border-l border-slate-200"
                       style={{ width: '25%' }}
@@ -519,7 +481,6 @@ export const ReportsAndReceipts: React.FC<ReportsAndReceiptsProps> = ({
         </div>
       </div>
 
-<<<<<<< HEAD
       {/* Hidden print sheet: A4 landscape voucher print */}
       <div id="print-root" className="print-only">
         <div id="a4-print-sheet">
@@ -555,20 +516,6 @@ export const ReportsAndReceipts: React.FC<ReportsAndReceiptsProps> = ({
               )}
             </div>
           )}
-=======
-      {/* Hidden print sheet: Only A4 landscape right side single voucher */}
-      <div id="print-root" className="print-only">
-        <div id="a4-print-sheet">
-          <div className="voucher-right-print">
-            {activeReceiptTransaction && (
-              <VoucherContent
-                trx={activeReceiptTransaction}
-                settings={settings}
-                copyLabel="গ্রাহক কপি"
-              />
-            )}
-          </div>
->>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
         </div>
       </div>
     </div>
