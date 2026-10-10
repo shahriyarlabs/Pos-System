@@ -1,9 +1,7 @@
 @import "tailwindcss";
 
-@layer base {
-  body {
-    font-family: 'Hind Siliguri', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  }
+body {
+  font-family: 'Hind Siliguri', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 }
 
 .print-only {
@@ -32,7 +30,6 @@
     display: block !important;
   }
 
-  /* শুধু প্রিন্ট শিট দেখাও, বাকি সব লুকাও */
   body * {
     visibility: hidden !important;
   }
@@ -50,7 +47,6 @@
     padding: 0 !important;
   }
 
-  /* A4 Landscape Sheet (297mm × 210mm) */
   #a4-print-sheet {
     display: flex !important;
     justify-content: flex-end !important;
@@ -64,7 +60,6 @@
     box-sizing: border-box !important;
   }
 
-  /* Right-side single voucher (Width: ~3 inch / 74.25mm, Length: ~8.27 inch / 210mm) */
   .voucher-right-print {
     width: 74.25mm !important;
     height: 210mm !important;
@@ -78,13 +73,13 @@
     border-left: 1px dashed #cbd5e1 !important;
   }
 
-  /* Dual voucher (Customer Copy + Office Copy) */
   .voucher-dual-print {
     display: flex !important;
     justify-content: flex-end !important;
     height: 210mm !important;
     margin-left: auto !important;
   }
+
   .voucher-dual-print > div {
     width: 74.25mm !important;
     height: 210mm !important;
