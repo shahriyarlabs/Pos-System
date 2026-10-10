@@ -38,15 +38,21 @@ import {
   saveStoredSupabaseConfig,
   listShopsFromSupabase,
   RegisteredShopSummary,
+<<<<<<< HEAD
   normalizeSupabaseUrl,
   normalizeSupabaseKey,
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
 } from '../lib/supabase';
 
 interface LoginScreenProps {
   settings: ShopSettings;
   supabaseConfig: SupabaseConfig;
   onLoginSuccess: (session: UserSession, newSettings?: ShopSettings, newConfig?: SupabaseConfig) => void;
+<<<<<<< HEAD
   onUpdateDatabaseConfig?: (newConfig: SupabaseConfig) => void;
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
 }
 
 const PRESET_LOGOS = [
@@ -91,7 +97,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   settings,
   supabaseConfig,
   onLoginSuccess,
+<<<<<<< HEAD
   onUpdateDatabaseConfig,
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
 }) => {
   // Mode: 'login' (for existing shop on any device) or 'register' (new shop)
   const [activeMode, setActiveMode] = useState<'login' | 'register'>('login');
@@ -111,6 +120,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [showManualSql, setShowManualSql] = useState(false);
   const [sqlCopied, setSqlCopied] = useState(false);
 
+<<<<<<< HEAD
   // New device database setup state on login
   const isDbConfigured = Boolean(supabaseConfig.isConnected && supabaseConfig.url);
   const [showCustomDbLogin, setShowCustomDbLogin] = useState(!isDbConfigured);
@@ -130,6 +140,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     const url = normalizeSupabaseUrl(rawUrl);
     const key = normalizeSupabaseKey(rawKey);
 
+=======
+  // Optional custom DB accordion on login
+  const [showCustomDbLogin, setShowCustomDbLogin] = useState(false);
+  const [customDbUrl, setCustomDbUrl] = useState(supabaseConfig.url || '');
+  const [customDbKey, setCustomDbKey] = useState(supabaseConfig.anonKey || '');
+
+  // Fetch registered shops in this Supabase database
+  const fetchRegisteredShops = async () => {
+    const url = (showCustomDbLogin && customDbUrl.trim()) || supabaseConfig.url || '';
+    const key = (showCustomDbLogin && customDbKey.trim()) || supabaseConfig.anonKey || '';
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
     if (!url || !key) return;
     const client = getSupabaseClient(url, key);
     if (!client) return;
@@ -150,6 +171,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     }
   };
 
+<<<<<<< HEAD
   // Test and save Supabase credentials for new device
   const handleTestAndSaveCustomDb = async () => {
     const cleanUrl = normalizeSupabaseUrl(customDbUrl);
@@ -223,6 +245,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     }
   };
 
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
   useEffect(() => {
     fetchRegisteredShops();
   }, [supabaseConfig.url, supabaseConfig.anonKey, showCustomDbLogin, customDbUrl, customDbKey]);
@@ -506,6 +530,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE shop_settings, customers, inventor
     setIsLoggingIn(true);
 
     try {
+<<<<<<< HEAD
       // Determine which Supabase URL/Key to query with normalization
       const rawUrl = (customDbUrl && customDbUrl.trim()) || supabaseConfig.url || '';
       const rawKey = (customDbKey && customDbKey.trim()) || supabaseConfig.anonKey || '';
@@ -516,6 +541,14 @@ ALTER PUBLICATION supabase_realtime ADD TABLE shop_settings, customers, inventor
         setLoginError(
           'এই ডিভাইসে ডাটাবেজ সংযোগ পাওয়া যায়নি। অনুগ্রহ করে "নতুন ডিভাইসে ডাটাবেজ সেটআপ" অংশে আপনার প্রজেক্ট URL ও Anon Key দিন এবং "ডাটাবেজ টেস্ট ও সেভ করুন" বাটনে ক্লিক করুন।'
         );
+=======
+      // Determine which Supabase URL/Key to query
+      const urlToUse = (showCustomDbLogin && customDbUrl.trim()) || supabaseConfig.url || '';
+      const keyToUse = (showCustomDbLogin && customDbKey.trim()) || supabaseConfig.anonKey || '';
+
+      if (!urlToUse || !keyToUse) {
+        setLoginError('ডাটাবেজ সংযোগ পাওয়া যায়নি। রেজিস্ট্রেশন করুন অথবা নিচে "ডাটাবেজ URL ও Key দিন" থেকে আপনার নিজস্ব Supabase তথ্য দিন।');
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
         setShowCustomDbLogin(true);
         setIsLoggingIn(false);
         return;
@@ -523,7 +556,11 @@ ALTER PUBLICATION supabase_realtime ADD TABLE shop_settings, customers, inventor
 
       const client = getSupabaseClient(urlToUse, keyToUse);
       if (!client) {
+<<<<<<< HEAD
         setLoginError('ডাটাবেজ সংযোগ স্থাপন করা যায়নি। URL ও Key ফরম্যাট চেক করুন।');
+=======
+        setLoginError('ডাটাবেজ সংযোগ পাওয়া যায়নি। URL ও Key চেক করুন।');
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
         setIsLoggingIn(false);
         return;
       }
@@ -553,14 +590,18 @@ ALTER PUBLICATION supabase_realtime ADD TABLE shop_settings, customers, inventor
         };
 
         saveStoredSupabaseConfig(newDbConfig);
+<<<<<<< HEAD
         if (onUpdateDatabaseConfig) {
           onUpdateDatabaseConfig(newDbConfig);
         }
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
         onLoginSuccess(session, loadedShop, newDbConfig);
       } else {
         setLoginError(loginRes.message || 'লগইন ব্যর্থ হয়েছে। আইডি ও পিন চেক করুন।');
       }
     } catch (err: any) {
+<<<<<<< HEAD
       const errMsg = err?.message || '';
       if (
         errMsg.includes('Failed to fetch') ||
@@ -573,6 +614,9 @@ ALTER PUBLICATION supabase_realtime ADD TABLE shop_settings, customers, inventor
       } else {
         setLoginError(errMsg || 'সার্ভার যোগাযোগ সমস্যা। ইন্টারনেট চেক করুন।');
       }
+=======
+      setLoginError(err.message || 'সার্ভার যোগাযোগ সমস্যা। ইন্টারনেট চেক করুন।');
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
     } finally {
       setIsLoggingIn(false);
     }
@@ -930,6 +974,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE shop_settings, customers, inventor
               )}
             </div>
 
+<<<<<<< HEAD
             {/* New Device Database Connection / Cloud Config */}
             <div
               className={`border rounded-2xl p-4 transition ${
@@ -1070,6 +1115,44 @@ ALTER PUBLICATION supabase_realtime ADD TABLE shop_settings, customers, inventor
                       )}
                     </button>
                   </div>
+=======
+            {/* Optional Custom Database Accordion */}
+            <div className="border border-slate-800 rounded-2xl p-3 bg-slate-950/40">
+              <button
+                type="button"
+                onClick={() => setShowCustomDbLogin(!showCustomDbLogin)}
+                className="w-full flex items-center justify-between text-xs text-slate-400 hover:text-slate-200 cursor-pointer"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Database className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="font-semibold">অন্য কোনো Supabase ডাটাবেজ ব্যবহার করবেন? (ঐচ্ছিক)</span>
+                </div>
+                {showCustomDbLogin ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+
+              {showCustomDbLogin && (
+                <div className="mt-3 space-y-2.5 pt-2 border-t border-slate-800 text-xs">
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Project URL</label>
+                    <input
+                      type="url"
+                      value={customDbUrl}
+                      onChange={(e) => setCustomDbUrl(e.target.value)}
+                      placeholder="https://xyz.supabase.co"
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-mono text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Anon Key</label>
+                    <input
+                      type="text"
+                      value={customDbKey}
+                      onChange={(e) => setCustomDbKey(e.target.value)}
+                      placeholder="eyJhb..."
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-mono text-white"
+                    />
+                  </div>
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
                 </div>
               )}
             </div>

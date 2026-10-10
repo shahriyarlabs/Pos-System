@@ -9,9 +9,13 @@ import { ReportsAndReceipts } from './components/ReportsAndReceipts';
 import { GlobalSearchModal } from './components/GlobalSearchModal';
 import { CalculationAuditModal } from './components/CalculationAuditModal';
 import { DatabaseConnectModal } from './components/DatabaseConnectModal';
+<<<<<<< HEAD
 import { ConnectDeviceModal } from './components/ConnectDeviceModal';
 import { LoginScreen } from './components/LoginScreen';
 import { ShopSettingsView } from './components/ShopSettingsView';
+=======
+import { LoginScreen } from './components/LoginScreen';
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
 import { auditAllCalculations, formatTaka } from './lib/calculations';
 import {
   AuditLog,
@@ -30,8 +34,11 @@ import {
   saveStoredSupabaseConfig,
   clearStoredSupabaseConfig,
   getSupabaseClient,
+<<<<<<< HEAD
   normalizeSupabaseUrl,
   normalizeSupabaseKey,
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
   pullAllFromSupabase,
   subscribeToShopRealtime,
   createSupabaseTransaction,
@@ -68,6 +75,7 @@ const DEFAULT_SETTINGS: ShopSettings = {
   email: 'brothersdigital.bd@gmail.com',
   openingCashBalance: 15000,
   receiptFooterNote: 'আমাদের সেবা গ্রহণ করার জন্য আপনাকে ধন্যবাদ। আবার আসবেন!',
+<<<<<<< HEAD
   receiptType: 'laser_half_a4',
   voucherSignatureTitle: 'স্বত্বাধিকারী / অনুমোদিত স্বাক্ষর',
   showSignatureOnReceipt: true,
@@ -75,6 +83,9 @@ const DEFAULT_SETTINGS: ShopSettings = {
   voucherPaperSize: 'laser_half_a4',
   voucherCopiesCount: 2,
   receiptGreeting: 'বিসমিল্লাহির রাহমানির রাহিম',
+=======
+  receiptType: 'standard',
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
   adminUsername: 'admin',
   adminPassword: '1235',
   adminPin: '1235',
@@ -90,7 +101,10 @@ export default function App() {
   // Supabase Configuration State
   const [supabaseConfig, setSupabaseConfig] = useState<SupabaseConfig>(getStoredSupabaseConfig());
   const [isDatabaseModalOpen, setIsDatabaseModalOpen] = useState<boolean>(false);
+<<<<<<< HEAD
   const [isConnectDeviceModalOpen, setIsConnectDeviceModalOpen] = useState<boolean>(false);
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
 
   // User Authentication State
   const [currentUser, setCurrentUser] = useState<UserSession | null>(() => {
@@ -286,6 +300,7 @@ function isEqualDataList(prevList: any[], nextList: any[]): boolean {
     };
   }, [supabaseConfig.url, supabaseConfig.anonKey, settings.shopKey, currentUser?.shopId, loadDatabaseData]);
 
+<<<<<<< HEAD
   // 3. Initial mount check (handles 1-click database connection for new devices via URL params)
   useEffect(() => {
     let activeConfig = getStoredSupabaseConfig();
@@ -334,6 +349,14 @@ function isEqualDataList(prevList: any[], nextList: any[]): boolean {
     setSupabaseConfig(activeConfig);
     if (activeConfig.url && activeConfig.anonKey) {
       loadDatabaseData(activeConfig, currentUser?.shopId || settings.shopKey || 'bdc');
+=======
+  // 3. Initial mount check
+  useEffect(() => {
+    const stored = getStoredSupabaseConfig();
+    setSupabaseConfig(stored);
+    if (stored.url && stored.anonKey) {
+      loadDatabaseData(stored, currentUser?.shopId || settings.shopKey || 'bdc');
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
     }
   }, []);
 
@@ -353,7 +376,10 @@ function isEqualDataList(prevList: any[], nextList: any[]): boolean {
         setIsNewTransactionModalOpen(false);
         setIsAuditModalOpen(false);
         setIsDatabaseModalOpen(false);
+<<<<<<< HEAD
         setIsConnectDeviceModalOpen(false);
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -538,6 +564,7 @@ function isEqualDataList(prevList: any[], nextList: any[]): boolean {
     }
   };
 
+<<<<<<< HEAD
   // Handler: Owner Cash Drawer Withdrawal
   const handleOwnerCashWithdrawal = async (amount: number, note?: string) => {
     await handleSaveTransaction(
@@ -555,6 +582,8 @@ function isEqualDataList(prevList: any[], nextList: any[]): boolean {
     );
   };
 
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
   // Handler: Add New Customer to Supabase
   const handleAddCustomer = async (
     newCustData: Omit<Customer, 'id' | 'totalBilled' | 'totalPaid' | 'lastTransactionDate'>
@@ -745,10 +774,13 @@ function isEqualDataList(prevList: any[], nextList: any[]): boolean {
         settings={settings}
         supabaseConfig={supabaseConfig}
         onLoginSuccess={handleLoginSuccess}
+<<<<<<< HEAD
         onUpdateDatabaseConfig={(newConfig) => {
           setSupabaseConfig(newConfig);
           saveStoredSupabaseConfig(newConfig);
         }}
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
       />
     );
   }
@@ -796,7 +828,10 @@ function isEqualDataList(prevList: any[], nextList: any[]): boolean {
         settings={settings}
         supabaseConfig={supabaseConfig}
         onOpenDatabaseModal={() => setIsDatabaseModalOpen(true)}
+<<<<<<< HEAD
         onOpenConnectDevice={() => setIsConnectDeviceModalOpen(true)}
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
         currentUser={currentUser}
         onLogout={handleLogout}
         onRefreshData={() => loadDatabaseData()}
@@ -870,7 +905,10 @@ function isEqualDataList(prevList: any[], nextList: any[]): boolean {
             onDeleteTransaction={handleDeleteTransaction}
             onRefreshData={() => loadDatabaseData()}
             isDataLoading={isDataLoading}
+<<<<<<< HEAD
             onOwnerCashWithdrawal={handleOwnerCashWithdrawal}
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
           />
         )}
 
@@ -915,6 +953,7 @@ function isEqualDataList(prevList: any[], nextList: any[]): boolean {
             settings={settings}
           />
         )}
+<<<<<<< HEAD
 
         {activeTab === 'settings' && (
           <ShopSettingsView
@@ -922,6 +961,8 @@ function isEqualDataList(prevList: any[], nextList: any[]): boolean {
             onSaveSettings={handleUpdateSettings}
           />
         )}
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
       </main>
 
       {/* Database Connection Modal */}
@@ -933,6 +974,7 @@ function isEqualDataList(prevList: any[], nextList: any[]): boolean {
         onDisconnect={handleDisconnectDatabase}
         shopKey={currentUser?.shopId || settings.shopKey || 'bdc'}
         onUpdateShopKey={(key) => handleUpdateSettings({ ...settings, shopKey: key })}
+<<<<<<< HEAD
         onOpenConnectDevice={() => setIsConnectDeviceModalOpen(true)}
       />
 
@@ -942,6 +984,8 @@ function isEqualDataList(prevList: any[], nextList: any[]): boolean {
         onClose={() => setIsConnectDeviceModalOpen(false)}
         supabaseConfig={supabaseConfig}
         settings={settings}
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
       />
 
       {/* Live Calculation Audit Modal */}

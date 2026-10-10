@@ -16,8 +16,11 @@ import {
   Wifi,
   PackageCheck,
   UserCheck,
+<<<<<<< HEAD
   Wallet,
   Coins,
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
 } from 'lucide-react';
 import { Customer, InventoryItem, PaymentMethod, ServiceCategory, ExpenseCategory, Transaction } from '../types';
 
@@ -58,7 +61,10 @@ const expenseCategories: {
   nameEn: string;
   icon: React.ElementType;
 }[] = [
+<<<<<<< HEAD
   { id: 'owner_drawing', nameBn: 'মালিকের ক্যাশ উত্তোলন (ড্রয়ার থেকে)', nameEn: 'Owner Drawer Cash Withdrawal', icon: Coins },
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
   { id: 'supplies', nameBn: 'কাগজ, কালি ও মালামাল ক্রয়', nameEn: 'Paper & Toner Refills', icon: ShoppingBag },
   { id: 'shop_rent', nameBn: 'দোকান ভাড়া', nameEn: 'Shop Rent', icon: Home },
   { id: 'electricity_bill', nameBn: 'বিদ্যুৎ বিল', nameEn: 'Electricity Bill', icon: Zap },
@@ -284,11 +290,15 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 : expenseCategories.map((exp) => {
                     const Icon = exp.icon;
                     const isSelected = selectedCategory === exp.id;
+<<<<<<< HEAD
                     const isOwnerDrawing = exp.id === 'owner_drawing';
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
                     return (
                       <button
                         type="button"
                         key={exp.id}
+<<<<<<< HEAD
                         onClick={() => {
                           setSelectedCategory(exp.id);
                           if (exp.id === 'owner_drawing') {
@@ -303,26 +313,40 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                               : 'bg-white border-rose-500 shadow-sm ring-2 ring-rose-500/20'
                             : isOwnerDrawing
                             ? 'bg-amber-50/40 border-amber-200 hover:border-amber-300'
+=======
+                        onClick={() => setSelectedCategory(exp.id)}
+                        className={`p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition ${
+                          isSelected
+                            ? 'bg-white border-rose-500 shadow-sm ring-2 ring-rose-500/20'
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
                             : 'bg-white/70 border-slate-200 hover:border-slate-300'
                         }`}
                       >
                         <div
                           className={`p-1.5 rounded-lg ${
                             isSelected
+<<<<<<< HEAD
                               ? isOwnerDrawing
                                 ? 'bg-amber-500 text-white'
                                 : 'bg-rose-100 text-rose-700'
                               : isOwnerDrawing
                               ? 'bg-amber-100 text-amber-800'
+=======
+                              ? 'bg-rose-100 text-rose-700'
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
                               : 'bg-slate-100 text-slate-500'
                           }`}
                         >
                           <Icon className="w-4 h-4" />
                         </div>
                         <div className="min-w-0 flex-1">
+<<<<<<< HEAD
                           <p className={`text-xs font-bold truncate ${isOwnerDrawing ? 'text-amber-950 font-black' : 'text-slate-800'}`}>
                             {exp.nameBn}
                           </p>
+=======
+                          <p className="text-xs font-bold text-slate-800 truncate">{exp.nameBn}</p>
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
                           <p className="text-[10px] text-slate-400 truncate">{exp.nameEn}</p>
                         </div>
                       </button>
@@ -412,6 +436,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             <label className="block text-xs font-bold text-slate-700 mb-2">
               পেমেন্ট মাধ্যম (Payment Method) *
             </label>
+<<<<<<< HEAD
             {type === 'EXPENSE' && selectedCategory === 'owner_drawing' ? (
               <div className="bg-amber-50/90 border border-amber-300 p-3.5 rounded-2xl text-xs space-y-1.5 shadow-xs">
                 <div className="flex items-center justify-between text-amber-950 font-bold">
@@ -458,6 +483,36 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 })}
               </div>
             )}
+=======
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {[
+                { id: 'CASH', labelBn: 'নগদ ক্যাশ', labelEn: 'Cash', color: 'emerald' },
+                { id: 'BKASH', labelBn: 'বিকাশ', labelEn: 'bKash', color: 'pink' },
+                { id: 'NAGAD', labelBn: 'নগদ', labelEn: 'Nagad', color: 'amber' },
+                { id: 'ROCKET', labelBn: 'রকেট', labelEn: 'Rocket', color: 'purple' },
+                ...(type === 'INCOME'
+                  ? [{ id: 'DUE', labelBn: 'বকেয়া (বাকি)', labelEn: 'Due / Credit', color: 'rose' }]
+                  : []),
+              ].map((pm) => {
+                const isSelected = paymentMethod === pm.id;
+                return (
+                  <button
+                    type="button"
+                    key={pm.id}
+                    onClick={() => setPaymentMethod(pm.id as PaymentMethod)}
+                    className={`py-2 px-2 rounded-xl border text-center transition ${
+                      isSelected
+                        ? 'bg-slate-900 text-white border-slate-900 font-bold shadow-xs'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <p className="text-xs font-bold">{pm.labelBn}</p>
+                    <p className="text-[10px] opacity-70">{pm.labelEn}</p>
+                  </button>
+                );
+              })}
+            </div>
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
           </div>
 
           {/* Customer Details Section (Required if payment method is DUE) */}

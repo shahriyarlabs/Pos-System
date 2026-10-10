@@ -19,9 +19,12 @@ import {
   HelpCircle,
   RefreshCw,
   Database,
+<<<<<<< HEAD
   Sliders,
   Coins,
   X,
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
 } from 'lucide-react';
 import { Customer, InventoryItem, MFSAccount, ShopSettings, Transaction } from '../types';
 import { auditAllCalculations, formatTaka } from '../lib/calculations';
@@ -39,7 +42,10 @@ interface DashboardProps {
   onDeleteTransaction?: (id: string) => void;
   onRefreshData?: () => void;
   isDataLoading?: boolean;
+<<<<<<< HEAD
   onOwnerCashWithdrawal?: (amount: number, note?: string) => Promise<void> | void;
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -55,24 +61,76 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onDeleteTransaction,
   onRefreshData,
   isDataLoading,
+<<<<<<< HEAD
   onOwnerCashWithdrawal,
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
 }) => {
   const [period, setPeriod] = useState<'today' | 'yesterday' | 'week' | 'month' | 'all'>('today');
   const [trxFilter, setTrxFilter] = useState<'ALL' | 'INCOME' | 'EXPENSE'>('ALL');
   const [trxSearchQuery, setTrxSearchQuery] = useState('');
 
+<<<<<<< HEAD
   // Owner drawer cash withdrawal modal states
   const [isOwnerWithdrawalOpen, setIsOwnerWithdrawalOpen] = useState(false);
   const [withdrawalAmount, setWithdrawalAmount] = useState('');
   const [withdrawalNote, setWithdrawalNote] = useState('');
   const [isSubmittingWithdrawal, setIsSubmittingWithdrawal] = useState(false);
 
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
   // 1. Audit Calculation Result (Memoized for high-speed rendering)
   const audit = useMemo(
     () => auditAllCalculations(settings, transactions, mfsAccounts, customers, inventory),
     [settings, transactions, mfsAccounts, customers, inventory]
   );
 
+<<<<<<< HEAD
+=======
+  // 2. Period-aware OPENING balance: = closing cash of the day BEFORE the selected period started.
+  // 'আজ' → yesterday's closing | 'গতকাল' → day-before-yesterday's closing | 'সব' → registration balance
+  const periodOpeningCash = useMemo(() => {
+    const base = Number(settings?.openingCashBalance || 0);
+
+    if (period === 'all') return base; // from the very beginning → registration balance
+
+    const now = new Date();
+    let startTime: number;
+
+    if (period === 'today') {
+      startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    } else if (period === 'yesterday') {
+      startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).getTime();
+    } else if (period === 'week') {
+      startTime = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+    } else {
+      startTime = new Date(now.getFullYear(), now.getMonth(), 1).getTime(); // 1st of month
+    }
+
+    let balance = base;
+    for (let i = 0; i < transactions.length; i++) {
+      const t = transactions[i];
+      if (new Date(t.timestamp).getTime() >= startTime) continue; // only transactions BEFORE the period
+      if (t.type === 'INCOME' && t.paymentMethod === 'CASH') balance += Number(t.amount || 0);
+      else if (t.type === 'EXPENSE' && t.paymentMethod === 'CASH') balance -= Number(t.amount || 0);
+    }
+
+    return Number(balance.toFixed(2));
+  }, [transactions, settings, period]);
+
+  // 3. Dynamic label so it's clear which day's opening balance is shown
+  const openingLabel =
+    period === 'today'
+      ? 'আজকের প্রারম্ভিক'
+      : period === 'yesterday'
+      ? 'গতকালের প্রারম্ভিক'
+      : period === 'week'
+      ? '৭ দিন আগের ব্যালেন্স'
+      : period === 'month'
+      ? 'মাসের প্রারম্ভিক'
+      : 'শুরুর ব্যালেন্স';
+
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
   // Dynamic counts for each period tab (Memoized)
   const periodCounts = useMemo(() => {
     const now = new Date();
@@ -201,7 +259,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
+<<<<<<< HEAD
             স্বত্বাধিকারী: <strong className="text-slate-700">{settings.ownerName || 'শপ ওনার'}</strong> • সরাসরি ক্লাউড ডাটাবেজে সংরক্ষিত রিয়েল-টাইম আয়, ব্যয়, নগদ ক্যাশ ও বাকি খাতা
+=======
+            স্বত্বাধিকারী: <strong className="text-slate-700">{settings.ownerName || 'শপ ওনার'}</strong> • সরাসরি ক্লাউড ডাটাবেজে সংরক্ষিত রিয়েল-টাইম আয়, ব্যয়, নগদ ক্যাশ ও বাকি খাতা
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
           </p>
         </div>
 
@@ -216,6 +278,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <span>হিসাব মেলানো ও অডিট</span>
           </button>
 
+<<<<<<< HEAD
           <button
             type="button"
             onClick={() => setIsOwnerWithdrawalOpen(true)}
@@ -236,6 +299,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <span>সেটিংস ও ভাউচার</span>
           </button>
 
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
           <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-semibold">
             {(
               [
@@ -268,7 +333,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="flex items-center gap-2.5 flex-wrap">
           <span className="flex items-center gap-1.5 text-emerald-400 font-bold bg-emerald-950/80 px-2.5 py-1 rounded-lg border border-emerald-700">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+<<<<<<< HEAD
             <span>ক্লাউড অটো-সেভ সক্রিয়</span>
+=======
+            <span>ক্লাউড অটো-সেভ সক্রিয়</span>
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
           </span>
           <span className="text-slate-500 hidden sm:inline">•</span>
           <span className="text-slate-300">
@@ -300,6 +369,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-white p-5 rounded-2xl border border-amber-200 shadow-xs relative overflow-hidden group">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-amber-900 uppercase tracking-wider">
+<<<<<<< HEAD
               হাতে নগদ (ক্যাশ ড্রয়ার)
             </span>
             <div className="flex items-center gap-1.5">
@@ -315,6 +385,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <div className="p-2 bg-amber-500 text-white rounded-xl shadow-sm">
                 <Wallet className="w-5 h-5" />
               </div>
+=======
+              হাতে নগদ (ক্যাশ ড্রয়ার)
+            </span>
+            <div className="p-2 bg-amber-500 text-white rounded-xl shadow-sm">
+              <Wallet className="w-5 h-5" />
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
             </div>
           </div>
           <div className="mt-3">
@@ -322,6 +398,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               {formatTaka(audit.netCashInHand)}
             </div>
             <div className="text-[11px] text-slate-600 mt-1 flex items-center justify-between">
+<<<<<<< HEAD
               <span>প্রারম্ভিক: {formatTaka(audit.openingCash)}</span>
               <div className="flex items-center gap-1.5">
                 <button
@@ -344,6 +421,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
+=======
+              <span>{openingLabel}: {formatTaka(periodOpeningCash)}</span>
+              <button
+                type="button"
+                onClick={onOpenCalculationAudit}
+                className="text-amber-800 font-bold hover:underline cursor-pointer flex items-center gap-0.5"
+              >
+                সূত্র দেখুন <HelpCircle className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+        </div>
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
         {/* 2. Total Income Card */}
         <div className="bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-white p-5 rounded-2xl border border-emerald-200 shadow-xs relative overflow-hidden">
           <div className="flex items-center justify-between">
@@ -380,11 +470,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
               {formatTaka(periodExpense)}
             </div>
             <div className="text-[11px] text-slate-600 mt-1 flex items-center justify-between">
+<<<<<<< HEAD
               <span>
                 {audit.ownerCashWithdrawals > 0
                   ? `দোকান খরচ: ${formatTaka(audit.cashExpenses)} • ড্রয়ার উত্তোলন: ${formatTaka(audit.ownerCashWithdrawals)}`
                   : 'দোকান ভাড়া, বিদ্যুৎ, চা ও মালামাল'}
               </span>
+=======
+              <span>দোকান ভাড়া, বিদ্যুৎ, চা ও মাল ক্রয়</span>
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
               <span className="text-rose-700 font-semibold">{filteredTransactions.filter((t) => t.type === 'EXPENSE').length} টি খরচ</span>
             </div>
           </div>
@@ -660,6 +754,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       })}
                     </td>
                     <td className="py-3 px-4">
+<<<<<<< HEAD
                       <div className="flex items-center gap-1.5 font-semibold text-slate-800">
                         {trx.category === 'owner_drawing' && (
                           <span className="p-1 rounded bg-amber-100 text-amber-800">
@@ -676,6 +771,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           দোকানের মালিক ({settings.ownerName || 'স্বত্বাধিকারী'})
                         </span>
                       ) : trx.customerName ? (
+=======
+                      <div className="font-semibold text-slate-800">{trx.categoryLabelBn}</div>
+                      {trx.note && <div className="text-[11px] text-slate-500">{trx.note}</div>}
+                    </td>
+                    <td className="py-3 px-4">
+                      {trx.customerName ? (
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
                         <div>
                           <span className="font-medium text-slate-800">{trx.customerName}</span>
                           {trx.customerPhone && (
@@ -689,28 +791,40 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <td className="py-3 px-4">
                       <span
                         className={`inline-block px-2 py-0.5 rounded-md text-[11px] font-semibold border ${
+<<<<<<< HEAD
                           trx.category === 'owner_drawing'
                             ? 'bg-amber-100 text-amber-900 border-amber-300 font-bold'
                             : trx.paymentMethod === 'CASH'
+=======
+                          trx.paymentMethod === 'CASH'
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
                             ? 'bg-amber-50 text-amber-800 border-amber-200'
                             : trx.paymentMethod === 'DUE'
                             ? 'bg-rose-50 text-rose-800 border-rose-200'
                             : 'bg-purple-50 text-purple-800 border-purple-200'
                         }`}
                       >
+<<<<<<< HEAD
                         {trx.category === 'owner_drawing'
                           ? 'ক্যাশ ড্রয়ার (উত্তোলন)'
                           : (trx.paymentMethodLabelBn || trx.paymentMethod)}
+=======
+                        {trx.paymentMethodLabelBn || trx.paymentMethod}
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
                       </span>
                     </td>
                     <td className="py-3 px-4 text-right">
                       <span
                         className={`font-black text-sm ${
+<<<<<<< HEAD
                           trx.category === 'owner_drawing'
                             ? 'text-amber-800'
                             : trx.type === 'INCOME'
                             ? 'text-emerald-600'
                             : 'text-rose-600'
+=======
+                          trx.type === 'INCOME' ? 'text-emerald-600' : 'text-rose-600'
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
                         }`}
                       >
                         {trx.type === 'INCOME' ? '+' : '-'}
@@ -750,6 +864,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </table>
         </div>
       </div>
+<<<<<<< HEAD
 
       {/* Dedicated Owner Cash Drawer Withdrawal Modal */}
       {isOwnerWithdrawalOpen && (
@@ -936,6 +1051,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
       )}
+=======
+>>>>>>> c8bce4deaa0f4492c32d6a0b403b72cb39809e2d
     </div>
   );
 };
