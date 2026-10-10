@@ -9,6 +9,7 @@ export type ServiceCategory =
   | 'laminating'
   | 'mfs_fee'
   | 'product_sale'
+  | 'owner_deposit'
   | 'other_income';
 
 export type ExpenseCategory =

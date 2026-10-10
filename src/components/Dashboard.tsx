@@ -40,6 +40,7 @@ interface DashboardProps {
   onRefreshData?: () => void;
   isDataLoading?: boolean;
   onOwnerCashWithdrawal?: (amount: number, note?: string) => Promise<void> | void;
+  onOwnerCashDeposit?: (amount: number, note?: string) => Promise<void> | void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -56,16 +57,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onRefreshData,
   isDataLoading,
   onOwnerCashWithdrawal,
+  onOwnerCashDeposit,
 }) => {
   const [period, setPeriod] = useState<'today' | 'yesterday' | 'week' | 'month' | 'all'>('today');
   const [trxFilter, setTrxFilter] = useState<'ALL' | 'INCOME' | 'EXPENSE'>('ALL');
   const [trxSearchQuery, setTrxSearchQuery] = useState('');
 
-  // Owner drawer cash withdrawal modal states
-  const [isOwnerWithdrawalOpen, setIsOwnerWithdrawalOpen] = useState(false);
-  const [withdrawalAmount, setWithdrawalAmount] = useState('');
-  const [withdrawalNote, setWithdrawalNote] = useState('');
-  const [isSubmittingWithdrawal, setIsSubmittingWithdrawal] = useState(false);
+  // Owner drawer cash modal states (টাকা যুক্ত / টাকা উত্তোলন)
+  const [isDrawerModalOpen, setIsDrawerModalOpen] = useState(false);
+  const [drawerMode, setDrawerMode] = useState<'DEPOSIT' | 'WITHDRAW'>('DEPOSIT');
+  const [drawerCashAmount, setDrawerCashAmount] = useState('');
+  const [drawerCashNote, setDrawerCashNote] = useState('');
+  const [isSubmittingDrawerCash, setIsSubmittingDrawerCash] = useState(false);
+
+  const openDrawerModal = (mode: 'DEPOSIT' | 'WITHDRAW') => {
+    setDrawerMode(mode);
+    setDrawerCashAmount('');
+    setDrawerCashNote('');
+    setIsDrawerModalOpen(true);
+  };
 
   // 1. Audit Calculation Result (Memoized for high-speed rendering)
   const audit = useMemo(
@@ -218,12 +228,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           <button
             type="button"
-            onClick={() => setIsOwnerWithdrawalOpen(true)}
+            onClick={() => openDrawerModal('DEPOSIT')}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white border border-emerald-700 rounded-xl text-xs font-bold transition cursor-pointer shadow-xs"
+            title="মালিক যখন ক্যাশ ড্রয়ারে টাকা যুক্ত করবেন তখন শুধু ড্রয়ারের নগদ ক্যাশ বাড়বে"
+          >
+            <Plus className="w-4 h-4 text-white" />
+            <span>ড্রয়ারে টাকা যুক্ত</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => openDrawerModal('WITHDRAW')}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white border border-amber-600 rounded-xl text-xs font-bold transition cursor-pointer shadow-xs"
             title="মালিক যখন ক্যাশ ড্রয়ার থেকে টাকা নিবেন তখন শুধু ড্রয়ারের নগদ ক্যাশ কমবে"
           >
             <Coins className="w-4 h-4 text-white" />
-            <span>ড্রয়ার থেকে টাকা উত্তোলন</span>
+            <span>ড্রয়ার থেকে উত্তোলন</span>
           </button>
 
           <button
@@ -305,7 +325,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => setIsOwnerWithdrawalOpen(true)}
+                onClick={() => openDrawerModal('DEPOSIT')}
+                className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition cursor-pointer flex items-center gap-1"
+                title="ড্রয়ারে ক্যাশ টাকা যুক্ত করুন (শুধু ড্রয়ার ক্যাশ বাড়বে)"
+              >
+                <Plus className="w-3 h-3" />
+                <span>টাকা যুক্ত</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => openDrawerModal('WITHDRAW')}
                 className="px-2 py-1 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition cursor-pointer flex items-center gap-1"
                 title="মালিক যখন ক্যাশ ড্রয়ার থেকে টাকা নিবেন তখন শুধু ড্রয়ারের নগদ ক্যাশ কমবে"
               >
@@ -321,15 +350,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
               {formatTaka(audit.netCashInHand)}
             </div>
-            <div className="text-[11px] text-slate-600 mt-1 flex items-center justify-between">
+            <div className="text-[11px] text-slate-600 mt-1 flex items-center justify-between flex-wrap gap-1">
               <span>প্রারম্ভিক: {formatTaka(audit.openingCash)}</span>
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => setIsOwnerWithdrawalOpen(true)}
+                  onClick={() => openDrawerModal('DEPOSIT')}
+                  className="text-emerald-700 font-bold hover:underline cursor-pointer"
+                >
+                  +টাকা যুক্ত
+                </button>
+                <span className="text-slate-300">•</span>
+                <button
+                  type="button"
+                  onClick={() => openDrawerModal('WITHDRAW')}
                   className="text-amber-800 font-bold hover:underline cursor-pointer"
                 >
-                  ক্যাশ উত্তোলন
+                  -উত্তোলন
                 </button>
                 <span className="text-slate-300">•</span>
                 <button
@@ -359,7 +396,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
               {formatTaka(periodIncome)}
             </div>
             <div className="text-[11px] text-slate-600 mt-1 flex items-center justify-between">
-              <span>ফটোকপি, প্রিন্ট, পণ্য ও সেবা</span>
+              <span>
+                {audit.ownerCashDeposits > 0
+                  ? `বিক্রি ও সেবা: ${formatTaka(audit.totalSalesAndServicesIncome)} • ড্রয়ার জমা: ${formatTaka(audit.ownerCashDeposits)}`
+                  : 'ফটোকপি, প্রিন্ট, পণ্য ও সেবা'}
+              </span>
               <span className="text-emerald-700 font-semibold">{filteredTransactions.filter((t) => t.type === 'INCOME').length} টি ভাউচার</span>
             </div>
           </div>
@@ -666,13 +707,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             <Coins className="w-3.5 h-3.5" />
                           </span>
                         )}
+                        {trx.category === 'owner_deposit' && (
+                          <span className="p-1 rounded bg-emerald-100 text-emerald-800">
+                            <Plus className="w-3.5 h-3.5" />
+                          </span>
+                        )}
                         <span>{trx.categoryLabelBn}</span>
                       </div>
                       {trx.note && <div className="text-[11px] text-slate-500">{trx.note}</div>}
                     </td>
                     <td className="py-3 px-4">
-                      {trx.category === 'owner_drawing' ? (
-                        <span className="inline-block px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                      {trx.category === 'owner_drawing' || trx.category === 'owner_deposit' ? (
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded-md text-[11px] font-bold ${
+                            trx.category === 'owner_deposit'
+                              ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                              : 'bg-amber-100 text-amber-900 border border-amber-300'
+                          }`}
+                        >
                           দোকানের মালিক ({settings.ownerName || 'স্বত্বাধিকারী'})
                         </span>
                       ) : trx.customerName ? (
@@ -691,6 +743,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         className={`inline-block px-2 py-0.5 rounded-md text-[11px] font-semibold border ${
                           trx.category === 'owner_drawing'
                             ? 'bg-amber-100 text-amber-900 border-amber-300 font-bold'
+                            : trx.category === 'owner_deposit'
+                            ? 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold'
                             : trx.paymentMethod === 'CASH'
                             ? 'bg-amber-50 text-amber-800 border-amber-200'
                             : trx.paymentMethod === 'DUE'
@@ -700,6 +754,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       >
                         {trx.category === 'owner_drawing'
                           ? 'ক্যাশ ড্রয়ার (উত্তোলন)'
+                          : trx.category === 'owner_deposit'
+                          ? 'ক্যাশ ড্রয়ার (টাকা যুক্ত)'
                           : (trx.paymentMethodLabelBn || trx.paymentMethod)}
                       </span>
                     </td>
@@ -708,6 +764,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         className={`font-black text-sm ${
                           trx.category === 'owner_drawing'
                             ? 'text-amber-800'
+                            : trx.category === 'owner_deposit'
+                            ? 'text-emerald-700 font-black'
                             : trx.type === 'INCOME'
                             ? 'text-emerald-600'
                             : 'text-rose-600'
@@ -751,26 +809,80 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Dedicated Owner Cash Drawer Withdrawal Modal */}
-      {isOwnerWithdrawalOpen && (
+      {/* Dedicated Owner Cash Drawer Modal (টাকা যুক্ত / টাকা উত্তোলন) */}
+      {isDrawerModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto no-print">
           <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-6 transition-all">
+            {/* Mode Tab Switcher */}
+            <div className="grid grid-cols-2 p-1.5 bg-slate-100 border-b border-slate-200 text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => {
+                  setDrawerMode('DEPOSIT');
+                  setDrawerCashAmount('');
+                  setDrawerCashNote('');
+                }}
+                className={`py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  drawerMode === 'DEPOSIT'
+                    ? 'bg-emerald-600 text-white shadow-xs font-black'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                }`}
+              >
+                <Plus className="w-4 h-4" />
+                <span>টাকা যুক্ত করুন (জমা)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDrawerMode('WITHDRAW');
+                  setDrawerCashAmount('');
+                  setDrawerCashNote('');
+                }}
+                className={`py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  drawerMode === 'WITHDRAW'
+                    ? 'bg-amber-600 text-white shadow-xs font-black'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                }`}
+              >
+                <Coins className="w-4 h-4" />
+                <span>টাকা উত্তোলন (খরচ)</span>
+              </button>
+            </div>
+
             {/* Header */}
-            <div className="bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800 text-white px-6 py-4 flex items-center justify-between">
+            <div
+              className={`text-white px-6 py-4 flex items-center justify-between transition-colors ${
+                drawerMode === 'DEPOSIT'
+                  ? 'bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-800'
+                  : 'bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800'
+              }`}
+            >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-white/20 text-white flex items-center justify-center font-bold">
-                  <Coins className="w-5 h-5 text-white" />
+                  {drawerMode === 'DEPOSIT' ? (
+                    <Plus className="w-5 h-5 text-white" />
+                  ) : (
+                    <Coins className="w-5 h-5 text-white" />
+                  )}
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white">ড্রয়ার থেকে টাকা উত্তোলন</h3>
-                  <p className="text-xs text-amber-100">
-                    মালিকের ক্যাশ উত্তোলন • শুধু ড্রয়ারের নগদ ক্যাশ কমবে
+                  <h3 className="text-base font-bold text-white">
+                    {drawerMode === 'DEPOSIT'
+                      ? 'ড্রয়ারে নগদ টাকা যুক্ত করুন'
+                      : 'ড্রয়ার থেকে টাকা উত্তোলন'}
+                  </h3>
+                  <p className="text-xs text-white/80">
+                    {drawerMode === 'DEPOSIT'
+                      ? 'মালিকের ক্যাশ জমা • শুধু ড্রয়ারের নগদ টাকা বাড়বে'
+                      : 'মালিকের ক্যাশ উত্তোলন • শুধু ড্রয়ারের নগদ ক্যাশ কমবে'}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => setIsOwnerWithdrawalOpen(false)}
+                onClick={() => {
+                  setIsDrawerModalOpen(false);
+                }}
                 className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -780,12 +892,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
-                const amt = Number(withdrawalAmount);
+                const amt = Number(drawerCashAmount);
                 if (!amt || amt <= 0) {
                   alert('অনুগ্রহ করে সঠিক টাকার পরিমাণ লিখুন');
                   return;
                 }
-                if (amt > audit.netCashInHand) {
+
+                if (drawerMode === 'WITHDRAW' && amt > audit.netCashInHand) {
                   if (
                     !confirm(
                       `উত্তোলনের পরিমাণ (৳${amt}) ড্রয়ারে থাকা মোট ক্যাশ (৳${audit.netCashInHand}) এর চেয়ে বেশি। আপনি কি নিশ্চিত যে ড্রয়ার থেকে টাকা নিয়েছেন?`
@@ -794,54 +907,109 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     return;
                   }
                 }
-                setIsSubmittingWithdrawal(true);
+
+                setIsSubmittingDrawerCash(true);
                 try {
-                  if (onOwnerCashWithdrawal) {
-                    await onOwnerCashWithdrawal(
-                      amt,
-                      withdrawalNote.trim() || 'মালিকের ড্রয়ার থেকে ক্যাশ উত্তোলন'
-                    );
+                  if (drawerMode === 'DEPOSIT') {
+                    if (onOwnerCashDeposit) {
+                      await onOwnerCashDeposit(
+                        amt,
+                        drawerCashNote.trim() || 'মালিকের ড্রয়ারে ক্যাশ টাকা যুক্ত'
+                      );
+                    }
+                  } else {
+                    if (onOwnerCashWithdrawal) {
+                      await onOwnerCashWithdrawal(
+                        amt,
+                        drawerCashNote.trim() || 'মালিকের ড্রয়ার থেকে ক্যাশ উত্তোলন'
+                      );
+                    }
                   }
-                  setIsOwnerWithdrawalOpen(false);
-                  setWithdrawalAmount('');
-                  setWithdrawalNote('');
+                  setIsDrawerModalOpen(false);
+                  setDrawerCashAmount('');
+                  setDrawerCashNote('');
                 } finally {
-                  setIsSubmittingWithdrawal(false);
+                  setIsSubmittingDrawerCash(false);
                 }
               }}
               className="p-6 space-y-4"
             >
-              {/* Current Drawer Cash Status */}
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between">
+              {/* Current Drawer Cash Status & Projected Balance */}
+              <div
+                className={`border rounded-2xl p-4 flex items-center justify-between ${
+                  drawerMode === 'DEPOSIT'
+                    ? 'bg-emerald-50/70 border-emerald-200'
+                    : 'bg-amber-50/70 border-amber-200'
+                }`}
+              >
                 <div>
-                  <span className="text-xs text-amber-900 font-bold block">ড্রয়ারে বর্তমান ক্যাশ টাকা:</span>
-                  <span className="text-2xl font-black text-amber-950">
+                  <span
+                    className={`text-xs font-bold block ${
+                      drawerMode === 'DEPOSIT' ? 'text-emerald-900' : 'text-amber-900'
+                    }`}
+                  >
+                    ড্রয়ারে বর্তমান ক্যাশ টাকা:
+                  </span>
+                  <span
+                    className={`text-2xl font-black ${
+                      drawerMode === 'DEPOSIT' ? 'text-emerald-950' : 'text-amber-950'
+                    }`}
+                  >
                     {formatTaka(audit.netCashInHand)}
                   </span>
+                  {drawerCashAmount && Number(drawerCashAmount) > 0 && (
+                    <div className="text-[11px] font-semibold text-slate-600 mt-0.5">
+                      {drawerMode === 'DEPOSIT' ? 'যুক্ত করার পর হবে: ' : 'উত্তোলনের পর থাকবে: '}
+                      <strong
+                        className={
+                          drawerMode === 'DEPOSIT' ? 'text-emerald-700' : 'text-amber-800'
+                        }
+                      >
+                        {formatTaka(
+                          drawerMode === 'DEPOSIT'
+                            ? audit.netCashInHand + Number(drawerCashAmount)
+                            : audit.netCashInHand - Number(drawerCashAmount)
+                        )}
+                      </strong>
+                    </div>
+                  )}
                 </div>
-                <div className="p-2.5 bg-amber-500 text-white rounded-xl shadow-xs">
+                <div
+                  className={`p-2.5 text-white rounded-xl shadow-xs ${
+                    drawerMode === 'DEPOSIT' ? 'bg-emerald-600' : 'bg-amber-500'
+                  }`}
+                >
                   <Wallet className="w-6 h-6" />
                 </div>
               </div>
 
               {/* Amount Input */}
               <div>
-                <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
                   <label className="block text-xs font-bold text-slate-700">
-                    উত্তোলনের পরিমাণ (টাকা ৳) *
+                    {drawerMode === 'DEPOSIT'
+                      ? 'টাকা যুক্তের পরিমাণ (৳) *'
+                      : 'উত্তোলনের পরিমাণ (৳) *'}
                   </label>
-                  <div className="flex items-center gap-1">
-                    {[200, 500, 1000, 2000, 5000].map((val) => (
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {(drawerMode === 'DEPOSIT'
+                      ? [500, 1000, 2000, 5000, 10000, 20000]
+                      : [200, 500, 1000, 2000, 5000]
+                    ).map((val) => (
                       <button
                         type="button"
                         key={val}
                         onClick={() => {
-                          const cur = Number(withdrawalAmount) || 0;
-                          setWithdrawalAmount(String(cur + val));
+                          const cur = Number(drawerCashAmount) || 0;
+                          setDrawerCashAmount(String(cur + val));
                         }}
-                        className="px-2 py-0.5 rounded-md bg-amber-100/70 hover:bg-amber-200 text-amber-900 font-bold text-[10px] transition cursor-pointer"
+                        className={`px-2 py-0.5 rounded-md font-bold text-[10px] transition cursor-pointer ${
+                          drawerMode === 'DEPOSIT'
+                            ? 'bg-emerald-100/80 hover:bg-emerald-200 text-emerald-900'
+                            : 'bg-amber-100/80 hover:bg-amber-200 text-amber-900'
+                        }`}
                       >
-                        +৳{val}
+                        +৳{val >= 1000 ? `${val / 1000}k` : val}
                       </button>
                     ))}
                   </div>
@@ -855,10 +1023,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     step="any"
                     required
                     min="1"
-                    value={withdrawalAmount}
-                    onChange={(e) => setWithdrawalAmount(e.target.value)}
+                    value={drawerCashAmount}
+                    onChange={(e) => setDrawerCashAmount(e.target.value)}
                     placeholder="0.00"
-                    className="w-full pl-9 pr-4 py-3 border border-slate-300 rounded-2xl text-xl font-black text-slate-900 bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-hidden transition"
+                    className={`w-full pl-9 pr-4 py-3 border rounded-2xl text-xl font-black text-slate-900 bg-white outline-hidden transition ${
+                      drawerMode === 'DEPOSIT'
+                        ? 'border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500'
+                        : 'border-slate-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500'
+                    }`}
                   />
                 </div>
               </div>
@@ -866,22 +1038,32 @@ export const Dashboard: React.FC<DashboardProps> = ({
               {/* Reason / Note */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  উত্তোলনের কারণ / নোট
+                  {drawerMode === 'DEPOSIT' ? 'টাকা যুক্ত করার কারণ / নোট' : 'উত্তোলনের কারণ / নোট'}
                 </label>
                 <div className="flex flex-wrap gap-1.5 mb-2">
-                  {[
-                    'ব্যক্তিগত প্রয়োজন',
-                    'বাজার ও ঘরের খরচ',
-                    'মালিকের লভ্যাংশ',
-                    'জরুরি ক্যাশ খরচ',
-                  ].map((preset) => (
+                  {(drawerMode === 'DEPOSIT'
+                    ? [
+                        'দোকানের চলতি ক্যাশ বৃদ্ধি',
+                        'নতুন মালামাল কেনার ক্যাশ',
+                        'মালিকের মূলধন জমা',
+                        'জরুরি ক্যাশ ঘাটতি পূরণ',
+                      ]
+                    : [
+                        'ব্যক্তিগত প্রয়োজন',
+                        'বাজার ও ঘরের খরচ',
+                        'মালিকের লভ্যাংশ',
+                        'জরুরি ক্যাশ খরচ',
+                      ]
+                  ).map((preset) => (
                     <button
                       type="button"
                       key={preset}
-                      onClick={() => setWithdrawalNote(preset)}
+                      onClick={() => setDrawerCashNote(preset)}
                       className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition cursor-pointer ${
-                        withdrawalNote === preset
-                          ? 'bg-amber-600 text-white border-amber-600 font-bold'
+                        drawerCashNote === preset
+                          ? drawerMode === 'DEPOSIT'
+                            ? 'bg-emerald-600 text-white border-emerald-600 font-bold'
+                            : 'bg-amber-600 text-white border-amber-600 font-bold'
                           : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
                       }`}
                     >
@@ -891,22 +1073,56 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </div>
                 <input
                   type="text"
-                  value={withdrawalNote}
-                  onChange={(e) => setWithdrawalNote(e.target.value)}
-                  placeholder="উদাঃ ব্যক্তিগত বাজার খরচ বা জরুরি প্রয়োজন..."
+                  value={drawerCashNote}
+                  onChange={(e) => setDrawerCashNote(e.target.value)}
+                  placeholder={
+                    drawerMode === 'DEPOSIT'
+                      ? 'উদাঃ নতুন মালামাল ক্রয়ের ক্যাশ বা চলতি মূলধন জমা...'
+                      : 'উদাঃ ব্যক্তিগত বাজার খরচ বা জরুরি প্রয়োজন...'
+                  }
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-white text-slate-800"
                 />
               </div>
 
               {/* Rules & Guarantee Banner */}
-              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 text-xs text-emerald-950 space-y-1">
-                <div className="font-bold flex items-center gap-1.5 text-emerald-900">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>শুধুমাত্র ক্যাশ ড্রয়ার কমবে (MFS দরকার নেই)</span>
+              <div
+                className={`border rounded-2xl p-3.5 text-xs space-y-1 ${
+                  drawerMode === 'DEPOSIT'
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
+                    : 'bg-amber-50 border-amber-200 text-amber-950'
+                }`}
+              >
+                <div
+                  className={`font-bold flex items-center gap-1.5 ${
+                    drawerMode === 'DEPOSIT' ? 'text-emerald-900' : 'text-amber-900'
+                  }`}
+                >
+                  <CheckCircle2
+                    className={`w-4 h-4 shrink-0 ${
+                      drawerMode === 'DEPOSIT' ? 'text-emerald-600' : 'text-amber-600'
+                    }`}
+                  />
+                  <span>
+                    {drawerMode === 'DEPOSIT'
+                      ? 'শুধুমাত্র ক্যাশ ড্রয়ারে টাকা বাড়বে (MFS দরকার নেই)'
+                      : 'শুধুমাত্র ক্যাশ ড্রয়ার কমবে (MFS দরকার নেই)'}
+                  </span>
                 </div>
-                <p className="text-[11px] text-emerald-800 leading-relaxed">
-                  ✓ ড্রয়ার থেকে এই টাকা নিলে <strong>শুধুমাত্র ক্যাশ ড্রয়ারের নগদ টাকা কমবে</strong>।<br />
-                  ✓ <strong>এমএফএস (বিকাশ, নগদ, রকেট) ব্যাংকিংয়ের কোনো প্রয়োজন নেই</strong>—কোনো ওয়ালেট ব্যালেন্সে প্রভাব পড়বে না।
+                <p
+                  className={`text-[11px] leading-relaxed ${
+                    drawerMode === 'DEPOSIT' ? 'text-emerald-800' : 'text-amber-800'
+                  }`}
+                >
+                  ✓ ড্রয়ারে এই লেনদেন করলে{' '}
+                  <strong>
+                    {drawerMode === 'DEPOSIT'
+                      ? 'শুধুমাত্র ক্যাশ ড্রয়ারের নগদ টাকা বাড়বে'
+                      : 'শুধুমাত্র ক্যাশ ড্রয়ারের নগদ টাকা কমবে'}
+                  </strong>
+                  ।
+                  <br />
+                  ✓ <strong>এমএফএস (বিকাশ, নগদ, রকেট) ব্যাংকিংয়ের কোনো প্রয়োজন নেই</strong>—কোনো
+                  মোবাইল ওয়ালেট ব্যালেন্সে প্রভাব পড়বে না।
                 </p>
               </div>
 
@@ -914,21 +1130,33 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsOwnerWithdrawalOpen(false)}
+                  onClick={() => {
+                    setIsDrawerModalOpen(false);
+                  }}
                   className="px-4 py-2.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                 >
                   বাতিল
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmittingWithdrawal}
-                  className="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white rounded-xl text-xs font-bold shadow-md transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                  disabled={isSubmittingDrawerCash}
+                  className={`px-6 py-2.5 text-white rounded-xl text-xs font-bold shadow-md transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5 ${
+                    drawerMode === 'DEPOSIT'
+                      ? 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800'
+                      : 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800'
+                  }`}
                 >
-                  <Coins className="w-4 h-4" />
+                  {drawerMode === 'DEPOSIT' ? (
+                    <Plus className="w-4 h-4" />
+                  ) : (
+                    <Coins className="w-4 h-4" />
+                  )}
                   <span>
-                    {isSubmittingWithdrawal
+                    {isSubmittingDrawerCash
                       ? 'সংরক্ষণ হচ্ছে...'
-                      : `উত্তোলন নিশ্চিত করুন ${withdrawalAmount ? `(৳${withdrawalAmount})` : ''}`}
+                      : drawerMode === 'DEPOSIT'
+                      ? `টাকা যুক্ত নিশ্চিত করুন ${drawerCashAmount ? `(৳${drawerCashAmount})` : ''}`
+                      : `উত্তোলন নিশ্চিত করুন ${drawerCashAmount ? `(৳${drawerCashAmount})` : ''}`}
                   </span>
                 </button>
               </div>

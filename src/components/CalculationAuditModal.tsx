@@ -125,6 +125,19 @@ export const CalculationAuditModal: React.FC<CalculationAuditModalProps> = ({
                 <span className="font-semibold text-emerald-600">+{formatTaka(audit.dueCollectedInCash)}</span>
               </div>
 
+              <div className="flex justify-between items-center py-1 bg-emerald-50/60 px-1.5 rounded-lg border border-emerald-200/60">
+                <div>
+                  <span className="flex items-center gap-1.5 text-emerald-950 font-semibold">
+                    <Coins className="w-3.5 h-3.5 text-emerald-600" />
+                    মালিকের ক্যাশ টাকা যুক্ত / জমা (Owner Deposit)
+                  </span>
+                  <span className="text-[10px] text-emerald-700 block ml-5">
+                    (ড্রয়ারে নতুন নগদ টাকা যুক্ত করলে শুধু ড্রয়ার ক্যাশ বাড়ে; MFS দরকার নেই)
+                  </span>
+                </div>
+                <span className="font-bold text-emerald-800">+{formatTaka(audit.ownerCashDeposits)}</span>
+              </div>
+
               <div className="flex justify-between items-center py-1">
                 <span className="flex items-center gap-1.5 text-slate-600">
                   <PlusCircle className="w-3.5 h-3.5 text-emerald-500" />
@@ -276,13 +289,15 @@ export const CalculationAuditModal: React.FC<CalculationAuditModalProps> = ({
           <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-900 space-y-2">
             <div className="font-bold text-amber-950 flex items-center gap-1.5 text-xs">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>ক্যাশ ড্রয়ার, বাকি খাতা ও উত্তোলন নীতি (Accounting Standard)</span>
+              <span>ক্যাশ ড্রয়ার, বাকি খাতা ও মালিকের লেনদেন নীতি (Accounting Standard)</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-[11px]">
               <div className="bg-white p-2.5 rounded-lg border border-amber-200/80">
-                <span className="font-bold text-amber-950 block mb-0.5">১. মালিকের ক্যাশ উত্তোলন:</span>
+                <span className="font-bold text-amber-950 block mb-0.5">১. মালিকের ক্যাশ উত্তোলন ও জমা (Owner Equity):</span>
                 <p className="text-amber-800 leading-relaxed">
-                  মালিক যখন ক্যাশ ড্রয়ার থেকে টাকা উত্তোলন করেন, তখন <strong>শুধুমাত্র ড্রয়ারের হাতে নগদ কমে</strong>। কোনো এমএফএস ব্যাংকিং (বিকাশ/নগদ/রকেট) প্রয়োজন নেই।
+                  • <strong>উত্তোলন করলে:</strong> শুধুমাত্র ক্যাশ ড্রয়ারের টাকা কমে।<br />
+                  • <strong>টাকা যুক্ত করলে:</strong> শুধুমাত্র ক্যাশ ড্রয়ারের টাকা বাড়ে।<br />
+                  কোনো অবস্থাতেই এমএফএস ব্যাংকিং (বিকাশ/নগদ/রকেট) প্রয়োজন নেই।
                 </p>
               </div>
               <div className="bg-white p-2.5 rounded-lg border border-amber-200/80">

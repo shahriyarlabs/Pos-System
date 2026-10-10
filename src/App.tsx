@@ -20,6 +20,7 @@ import {
   MFSAccount,
   MfsProvider,
   PaymentMethod,
+  ServiceCategory,
   ShopSettings,
   SupabaseConfig,
   Transaction,
@@ -555,6 +556,23 @@ function isEqualDataList(prevList: any[], nextList: any[]): boolean {
     );
   };
 
+  // Handler: Owner Cash Drawer Deposit (মালিকের ক্যাশ জমা / টাকা যুক্ত করা)
+  const handleOwnerCashDeposit = async (amount: number, note?: string) => {
+    await handleSaveTransaction(
+      {
+        type: 'INCOME',
+        category: 'owner_deposit' as ServiceCategory,
+        categoryLabelBn: 'মালিকের ক্যাশ জমা (ড্রয়ারে)',
+        categoryLabelEn: 'Owner Cash Deposit (Drawer)',
+        amount,
+        paymentMethod: 'CASH',
+        paymentMethodLabelBn: 'ক্যাশ ড্রয়ার',
+        note: note || 'মালিকের ড্রয়ারে ক্যাশ টাকা যুক্ত',
+      },
+      false
+    );
+  };
+
   // Handler: Add New Customer to Supabase
   const handleAddCustomer = async (
     newCustData: Omit<Customer, 'id' | 'totalBilled' | 'totalPaid' | 'lastTransactionDate'>
@@ -871,6 +889,7 @@ function isEqualDataList(prevList: any[], nextList: any[]): boolean {
             onRefreshData={() => loadDatabaseData()}
             isDataLoading={isDataLoading}
             onOwnerCashWithdrawal={handleOwnerCashWithdrawal}
+            onOwnerCashDeposit={handleOwnerCashDeposit}
           />
         )}
 

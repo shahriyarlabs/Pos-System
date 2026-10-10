@@ -12,6 +12,7 @@ export interface CalculationAudit {
   pastDaysNetCash: number; // পূর্ববর্তী দিনগুলোর নেট ক্যাশ ব্যালেন্স
   cashSalesIncome: number;
   dueCollectedInCash: number;
+  ownerCashDeposits: number; // মালিকের ড্রয়ারে টাকা যুক্ত/জমা (শুধু ক্যাশ বাড়বে, MFS ব্যাংকিং নয়)
   mfsCashInReceived: number;
   totalCashInflow: number;
 
@@ -98,6 +99,7 @@ export function auditAllCalculations(
   let cashSalesIncome = 0;
   let dueCollectedInCash = 0;
   let todayDueSalesIncome = 0;
+  let ownerCashDeposits = 0;
   let cashExpenses = 0;
   let ownerCashWithdrawals = 0;
   let digitalIncomeBkash = 0;
@@ -125,15 +127,28 @@ export function auditAllCalculations(
     // আজকের দিনের হিসাব
     if (isTrxToday) {
       if (trx.type === 'INCOME') {
+        const isOwnerDeposit =
+          (trx.category as string) === 'owner_deposit' ||
+          (trx.categoryLabelBn && (trx.categoryLabelBn.includes('জমা') || trx.categoryLabelBn.includes('যুক্ত')) && trx.categoryLabelBn.includes('মালিক')) ||
+          (trx.categoryLabelEn && /owner deposit|capital|owner cash/i.test(trx.categoryLabelEn)) ||
+          (trx.note && /মালিক.*(জমা|যুক্ত|মূলধন)|owner.*(deposit|capital)/i.test(trx.note));
+
         const isDueRepayment =
-          (trx.category === 'other_income' || (trx.category as string) === 'due_collection') &&
+          !isOwnerDeposit &&
+          ((trx.category === 'other_income' || (trx.category as string) === 'due_collection') &&
           (
             (trx.categoryLabelBn && (trx.categoryLabelBn.includes('বাকি') || trx.categoryLabelBn.includes('বকেয়া'))) ||
             (trx.categoryLabelEn && /due|repayment|credit/i.test(trx.categoryLabelEn)) ||
             (trx.note && (trx.note.includes('বকেয়া') || trx.note.includes('বাকি')))
-          );
+          ));
 
-        if (isDueRepayment) {
+        if (isOwnerDeposit) {
+          // মালিকের ড্রয়ারে টাকা যুক্ত / মূলধন ক্যাশ জমা:
+          // শুধুমাত্র ড্রয়ারের নগদ ক্যাশ বৃদ্ধি পায়! কোনো এমএফএস ব্যাংকিং প্রয়োজন নেই।
+          if (trx.paymentMethod === 'CASH') {
+            ownerCashDeposits += trx.amount;
+          }
+        } else if (isDueRepayment) {
           // বকেয়া আদায় / পরিশোধ:
           // গ্রাহক বাকির টাকা পরিশোধ করলে তবেই ড্রয়ারের ক্যাশ বৃদ্ধি পায়!
           if (trx.paymentMethod === 'CASH') {
@@ -209,9 +224,9 @@ export function auditAllCalculations(
   const openingCash = previousDayClosingCash;
 
   // 4. আজকের ক্যাশ আগমন ও বহির্গমন (ড্রয়ার ফর্মুলা):
-  // আগমন = প্রারম্ভিক ক্যাশ + নগদ বিক্রি + বকেয়া আদায় + এমএফএস ক্যাশ-ইন (কাস্টমার নগদ দিয়েছে)
+  // আগমন = প্রারম্ভিক ক্যাশ + নগদ বিক্রি + বকেয়া আদায় + মালিকের ক্যাশ জমা + এমএফএস ক্যাশ-ইন (কাস্টমার নগদ দিয়েছে)
   // বহির্গমন = দোকান খরচ + মালিকের ক্যাশ উত্তোলন + এমএফএস ক্যাশ-আউট (কাস্টমারকে নগদ দেওয়া হয়েছে)
-  const totalCashInflow = openingCash + cashSalesIncome + dueCollectedInCash + mfsCashInReceived;
+  const totalCashInflow = openingCash + cashSalesIncome + dueCollectedInCash + ownerCashDeposits + mfsCashInReceived;
   const totalCashOutflow = cashExpenses + ownerCashWithdrawals + mfsCashOutPaid;
   const netCashInHand = Number((totalCashInflow - totalCashOutflow).toFixed(2));
 
@@ -273,6 +288,7 @@ export function auditAllCalculations(
     openingCash,
     cashSalesIncome: Number(cashSalesIncome.toFixed(2)),
     dueCollectedInCash: Number(dueCollectedInCash.toFixed(2)),
+    ownerCashDeposits: Number(ownerCashDeposits.toFixed(2)),
     mfsCashInReceived: Number(mfsCashInReceived.toFixed(2)),
     totalCashInflow: Number(totalCashInflow.toFixed(2)),
 

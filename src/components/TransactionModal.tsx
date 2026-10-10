@@ -48,6 +48,7 @@ const incomeServices: {
   { id: 'laminating', nameBn: 'লেমিনেশন সার্ভিস', nameEn: 'Lamination', icon: Layers, defaultPrice: 60 },
   { id: 'mfs_fee', nameBn: 'বিকাশ / নগদ এজেন্ট ফি', nameEn: 'MFS Commission / Cash-out Fee', icon: Smartphone, defaultPrice: 40 },
   { id: 'product_sale', nameBn: 'স্টেশনারি পণ্য বিক্রি', nameEn: 'Stationery & Accessories', icon: ShoppingBag },
+  { id: 'owner_deposit', nameBn: 'মালিকের ক্যাশ জমা / টাকা যুক্ত (ড্রয়ারে)', nameEn: 'Owner Cash Deposit / Capital', icon: Coins, defaultPrice: 1000 },
   { id: 'other_income', nameBn: 'অন্যান্য ডিজিটাল আয়', nameEn: 'Other Income', icon: PlusCircle },
 ];
 
@@ -92,6 +93,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   // Handle service category selection
   const handleSelectService = (srvId: string, defaultPrice?: number) => {
     setSelectedCategory(srvId);
+    if (srvId === 'owner_deposit') {
+      setPaymentMethod('CASH');
+      if (!note) setNote('মালিকের ড্রয়ারে ক্যাশ টাকা যুক্ত');
+    }
     if (defaultPrice && !amount) {
       setAmount(String(defaultPrice));
     }
@@ -254,6 +259,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 ? incomeServices.map((srv) => {
                     const Icon = srv.icon;
                     const isSelected = selectedCategory === srv.id;
+                    const isOwnerDeposit = srv.id === 'owner_deposit';
                     return (
                       <button
                         type="button"
@@ -261,14 +267,20 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         onClick={() => handleSelectService(srv.id, srv.defaultPrice)}
                         className={`p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition ${
                           isSelected
-                            ? 'bg-white border-emerald-500 shadow-sm ring-2 ring-emerald-500/20'
+                            ? isOwnerDeposit
+                              ? 'bg-emerald-50/90 border-emerald-500 shadow-sm ring-2 ring-emerald-500/20'
+                              : 'bg-white border-emerald-500 shadow-sm ring-2 ring-emerald-500/20'
+                            : isOwnerDeposit
+                            ? 'bg-emerald-50/40 border-emerald-200 hover:border-emerald-300'
                             : 'bg-white/70 border-slate-200 hover:border-slate-300'
                         }`}
                       >
                         <div
                           className={`p-1.5 rounded-lg ${
                             isSelected
-                              ? 'bg-emerald-100 text-emerald-700'
+                              ? 'bg-emerald-600 text-white'
+                              : isOwnerDeposit
+                              ? 'bg-emerald-100 text-emerald-800'
                               : 'bg-slate-100 text-slate-500'
                           }`}
                         >
@@ -425,6 +437,22 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 </div>
                 <p className="text-amber-800 text-[11px] leading-relaxed">
                   ✓ মালিক ড্রয়ার থেকে টাকা নিলে <strong>শুধুমাত্র ক্যাশ ড্রয়ারের টাকা কমবে</strong>।<br />
+                  ✓ <strong>এমএফএস (বিকাশ/নগদ/রকেট) ব্যাংকিংয়ের কোনো দরকার নেই</strong>—মোবাইল ওয়ালেট ব্যালেন্স সম্পূর্ণ অপরিবর্তিত থাকবে।
+                </p>
+              </div>
+            ) : type === 'INCOME' && selectedCategory === 'owner_deposit' ? (
+              <div className="bg-emerald-50/90 border border-emerald-300 p-3.5 rounded-2xl text-xs space-y-1.5 shadow-xs">
+                <div className="flex items-center justify-between text-emerald-950 font-bold">
+                  <span className="flex items-center gap-2">
+                    <Coins className="w-4 h-4 text-emerald-600" />
+                    <span>ক্যাশ ড্রয়ারে সরাসরি জমা / টাকা যুক্ত (হাতে নগদ)</span>
+                  </span>
+                  <span className="bg-emerald-200/80 text-emerald-900 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wide">
+                    শুধুমাত্র ড্রয়ার ক্যাশ বাড়বে
+                  </span>
+                </div>
+                <p className="text-emerald-800 text-[11px] leading-relaxed">
+                  ✓ মালিক ড্রয়ারে টাকা যুক্ত করলে <strong>শুধুমাত্র ক্যাশ ড্রয়ারের নগদ টাকা বাড়বে</strong>।<br />
                   ✓ <strong>এমএফএস (বিকাশ/নগদ/রকেট) ব্যাংকিংয়ের কোনো দরকার নেই</strong>—মোবাইল ওয়ালেট ব্যালেন্স সম্পূর্ণ অপরিবর্তিত থাকবে।
                 </p>
               </div>
