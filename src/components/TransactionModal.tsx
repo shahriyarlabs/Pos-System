@@ -436,7 +436,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   </span>
                 </div>
                 <p className="text-amber-800 text-[11px] leading-relaxed">
-                  ✓ মালিক ড্রয়ার থেকে টাকা নিলে <strong>শুধুমাত্র ক্যাশ ড্রয়ারের টাকা কমবে</strong>।<br />
+                  ✓ মালিক ড্রয়ার থেকে টাকা নিলে <strong>ড্রয়ারের নগদ টাকা কমবে (ড্রয়ার খরচ)</strong> এবং মালিকের মূলধন কমবে।<br />
+                  ✓ মূলধনের বেশি উত্তোলন করলে তা <strong>ব্যবসায়ের অর্জিত লাভ বা আয় হ্রাস করবে</strong>।<br />
                   ✓ <strong>এমএফএস (বিকাশ/নগদ/রকেট) ব্যাংকিংয়ের কোনো দরকার নেই</strong>—মোবাইল ওয়ালেট ব্যালেন্স সম্পূর্ণ অপরিবর্তিত থাকবে।
                 </p>
               </div>
@@ -452,7 +453,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   </span>
                 </div>
                 <p className="text-emerald-800 text-[11px] leading-relaxed">
-                  ✓ মালিক ড্রয়ারে টাকা যুক্ত করলে <strong>শুধুমাত্র ক্যাশ ড্রয়ারের নগদ টাকা বাড়বে</strong>।<br />
+                  ✓ মালিক ড্রয়ারে টাকা যুক্ত করলে <strong>শুধুমাত্র ক্যাশ ড্রয়ারের নগদ টাকা বাড়বে</strong>। এটি সাধারণ বিক্রয় আয় নয়, এটি <strong>মালিকের মূলধন বৃদ্ধি</strong>।<br />
                   ✓ <strong>এমএফএস (বিকাশ/নগদ/রকেট) ব্যাংকিংয়ের কোনো দরকার নেই</strong>—মোবাইল ওয়ালেট ব্যালেন্স সম্পূর্ণ অপরিবর্তিত থাকবে।
                 </p>
               </div>

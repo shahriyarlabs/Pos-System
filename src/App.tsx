@@ -12,6 +12,7 @@ import { DatabaseConnectModal } from './components/DatabaseConnectModal';
 import { ConnectDeviceModal } from './components/ConnectDeviceModal';
 import { LoginScreen } from './components/LoginScreen';
 import { ShopSettingsView } from './components/ShopSettingsView';
+import { OwnerLedger } from './components/OwnerLedger';
 import { auditAllCalculations, formatTaka } from './lib/calculations';
 import {
   AuditLog,
@@ -890,6 +891,18 @@ function isEqualDataList(prevList: any[], nextList: any[]): boolean {
             isDataLoading={isDataLoading}
             onOwnerCashWithdrawal={handleOwnerCashWithdrawal}
             onOwnerCashDeposit={handleOwnerCashDeposit}
+          />
+        )}
+
+        {activeTab === 'owner-ledger' && (
+          <OwnerLedger
+            transactions={transactions}
+            settings={settings}
+            onOwnerCashWithdrawal={handleOwnerCashWithdrawal}
+            onOwnerCashDeposit={handleOwnerCashDeposit}
+            onDeleteTransaction={handleDeleteTransaction}
+            onOpenReceipt={handleOpenReceipt}
+            onNavigateToTab={setActiveTab}
           />
         )}
 

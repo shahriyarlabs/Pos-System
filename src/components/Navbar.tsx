@@ -17,6 +17,7 @@ import {
   RefreshCw,
   QrCode,
   Settings,
+  Landmark,
 } from 'lucide-react';
 import { ShopSettings, SupabaseConfig, UserSession } from '../types';
 import { formatTaka } from '../lib/calculations';
@@ -66,6 +67,12 @@ export const Navbar: React.FC<NavbarProps> = ({
       labelBn: 'ড্যাশবোর্ড',
       labelEn: 'Dashboard',
       icon: LayoutDashboard,
+    },
+    {
+      id: 'owner-ledger',
+      labelBn: 'মালিকের খতিয়ান',
+      labelEn: 'Owner Ledger',
+      icon: Landmark,
     },
     {
       id: 'due-ledger',

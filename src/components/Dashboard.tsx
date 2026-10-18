@@ -22,9 +22,15 @@ import {
   Sliders,
   Coins,
   X,
+  Landmark,
 } from 'lucide-react';
 import { Customer, InventoryItem, MFSAccount, ShopSettings, Transaction } from '../types';
-import { auditAllCalculations, formatTaka } from '../lib/calculations';
+import {
+  auditAllCalculations,
+  formatTaka,
+  isOwnerDepositTrx,
+  isOwnerDrawingTrx,
+} from '../lib/calculations';
 
 interface DashboardProps {
   transactions: Transaction[];
@@ -151,20 +157,61 @@ export const Dashboard: React.FC<DashboardProps> = ({
   }, [transactions, period]);
 
   // Calculate Period-specific Income and Expense (Memoized)
-  const { periodIncome, periodExpense, periodNetProfit } = useMemo(() => {
-    let income = 0;
-    let expense = 0;
+  // রুল: মালিক টাকা উত্তোলন করুক বা যুক্ত করুক এটা সাধারণ বিক্রয় আয় নয়—এটা মূলধন বৃদ্ধি বা হ্রাস করে।
+  // মূলধনের চেয়ে বেশি উত্তোলন করলে তা নিট লাভ/আয় হ্রাস করে। উত্তোলনকৃত টাকাও ড্রয়ারের খরচ।
+  const {
+    periodIncome,
+    periodExpense,
+    periodNetProfit,
+    periodCapitalDeposits,
+    periodOwnerDrawings,
+    periodExcessDrawings,
+  } = useMemo(() => {
+    let salesIncome = 0;
+    let operatingExpense = 0;
+    let capitalDeposits = 0;
+    let ownerDrawings = 0;
+
     for (let i = 0; i < filteredTransactions.length; i++) {
       const t = filteredTransactions[i];
-      if (t.type === 'INCOME') income += t.amount;
-      else if (t.type === 'EXPENSE') expense += t.amount;
+      const isDep = isOwnerDepositTrx(t);
+      const isDraw = isOwnerDrawingTrx(t);
+
+      if (isDep) {
+        capitalDeposits += t.amount;
+      } else if (isDraw) {
+        ownerDrawings += t.amount;
+      } else if (t.type === 'INCOME') {
+        salesIncome += t.amount;
+      } else if (t.type === 'EXPENSE') {
+        operatingExpense += t.amount;
+      }
     }
+
+    // সর্বমোট মূলধন ও ড্রয়িং হিসাব:
+    const initialCap = Number(settings?.openingCashBalance || 0);
+    let allTimeCap = initialCap;
+    let allTimeDraw = 0;
+    for (const trx of transactions) {
+      if (isOwnerDepositTrx(trx)) allTimeCap += trx.amount;
+      if (isOwnerDrawingTrx(trx)) allTimeDraw += trx.amount;
+    }
+    const excessDrawings = Math.max(0, allTimeDraw - allTimeCap);
+
+    // পরিচালন মুনাফা (Sales - Operating Expense)
+    const opProfit = salesIncome - operatingExpense;
+    // যদি মূলধনের অতিরিক্ত উত্তোলন থাকে, তবে তা আয়/লাভ হ্রাস করে:
+    const finalProfit = excessDrawings > 0 ? Math.max(0, opProfit - excessDrawings) : opProfit;
+
     return {
-      periodIncome: income,
-      periodExpense: expense,
-      periodNetProfit: income - expense,
+      periodIncome: salesIncome,
+      periodExpense: operatingExpense + ownerDrawings, // উত্তোলনকৃত টাকাও ড্রয়ারের খরচ
+      periodNetProfit: finalProfit,
+      periodCapitalDeposits: capitalDeposits,
+      periodOwnerDrawings: ownerDrawings,
+      periodExcessDrawings: excessDrawings,
     };
-  }, [filteredTransactions]);
+  }, [filteredTransactions, transactions, settings]);
 
   // If 'today' tab is active but today has 0 transactions while database contains existing transactions,
   // automatically show recent transactions so the user never sees an empty screen or feels the need to manually refresh!
@@ -397,11 +444,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
             <div className="text-[11px] text-slate-600 mt-1 flex items-center justify-between">
               <span>
-                {audit.ownerCashDeposits > 0
-                  ? `বিক্রি ও সেবা: ${formatTaka(audit.totalSalesAndServicesIncome)} • ড্রয়ার জমা: ${formatTaka(audit.ownerCashDeposits)}`
-                  : 'ফটোকপি, প্রিন্ট, পণ্য ও সেবা'}
+                {periodCapitalDeposits > 0
+                  ? `বিক্রি: ${formatTaka(periodIncome)} • মূলধন জমা: +${formatTaka(periodCapitalDeposits)} (আয় নয়)`
+                  : 'ফটোকপি, প্রিন্ট, পণ্য ও সেবা বিক্রি'}
               </span>
-              <span className="text-emerald-700 font-semibold">{filteredTransactions.filter((t) => t.type === 'INCOME').length} টি ভাউচার</span>
+              <span className="text-emerald-700 font-semibold">{filteredTransactions.filter((t) => t.type === 'INCOME' && !isOwnerDepositTrx(t)).length} টি ভাউচার</span>
             </div>
           </div>
         </div>
@@ -422,8 +469,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
             <div className="text-[11px] text-slate-600 mt-1 flex items-center justify-between">
               <span>
-                {audit.ownerCashWithdrawals > 0
-                  ? `দোকান খরচ: ${formatTaka(audit.cashExpenses)} • ড্রয়ার উত্তোলন: ${formatTaka(audit.ownerCashWithdrawals)}`
+                {periodOwnerDrawings > 0
+                  ? `দোকান খরচ: ${formatTaka(periodExpense - periodOwnerDrawings)} • মালিকের উত্তোলন: ${formatTaka(periodOwnerDrawings)}`
                   : 'দোকান ভাড়া, বিদ্যুৎ, চা ও মালামাল'}
               </span>
               <span className="text-rose-700 font-semibold">{filteredTransactions.filter((t) => t.type === 'EXPENSE').length} টি খরচ</span>
@@ -448,15 +495,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
               {formatTaka(periodNetProfit)}
             </div>
             <div className="text-[11px] text-slate-600 mt-1">
-              {periodNetProfit >= 0 ? 'আয় থেকে ব্যয় বাদ দিয়ে মুনাফা' : 'খরচ বেশি হয়েছে'}
+              {periodExcessDrawings > 0 ? (
+                <span className="text-purple-700 font-semibold">
+                  মূলধনের অতিরিক্ত ৳{periodExcessDrawings} উত্তোলন সমন্বয় করা হয়েছে
+                </span>
+              ) : periodNetProfit >= 0 ? (
+                'আয় থেকে ব্যয় বাদ দিয়ে মুনাফা'
+              ) : (
+                'খরচ বেশি হয়েছে'
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* SECONDARY STATUS PILLARS: Customer Dues, MFS, and Inventory */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Customer Due Ledger Banner */}
+      {/* SECONDARY STATUS PILLARS: Customer Dues, Owner Capital, MFS, and Inventory */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* 1. Customer Due Ledger Banner */}
         <div
           onClick={() => onNavigateToTab('due-ledger')}
           className="bg-white p-4 rounded-2xl border border-slate-200 hover:border-amber-300 hover:shadow-md transition cursor-pointer flex items-center justify-between"
@@ -474,7 +529,34 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <ChevronRight className="w-5 h-5 text-slate-400" />
         </div>
 
-        {/* MFS Balances Banner */}
+        {/* 2. Owner Capital & Equity Ledger Banner */}
+        <div
+          onClick={() => onNavigateToTab('owner-ledger')}
+          className="bg-white p-4 rounded-2xl border border-slate-200 hover:border-indigo-300 hover:shadow-md transition cursor-pointer flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-indigo-700">
+              <Landmark className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-slate-500 uppercase">মালিকের মূলধন খতিয়ান</div>
+              <div className="text-xl font-extrabold text-indigo-700">{formatTaka(audit.netOwnerCapitalRemaining)}</div>
+              <div className="text-[11px] text-slate-500">
+                মূলধন: {formatTaka(audit.totalOwnerCapitalInvested)} • উত্তোলন: {formatTaka(audit.totalOwnerDrawings)}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-0.5">
+            <ChevronRight className="w-5 h-5 text-indigo-500" />
+            {audit.excessDrawingsFromIncome > 0 && (
+              <span className="text-[9px] text-rose-600 font-bold">
+                আয় হ্রাস: -{formatTaka(audit.excessDrawingsFromIncome)}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* 3. MFS Balances Banner */}
         <div
           onClick={() => onNavigateToTab('mfs-ledger')}
           className="bg-white p-4 rounded-2xl border border-slate-200 hover:border-purple-300 hover:shadow-md transition cursor-pointer flex items-center justify-between"
@@ -492,7 +574,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <ChevronRight className="w-5 h-5 text-slate-400" />
         </div>
 
-        {/* Inventory Valuation Banner */}
+        {/* 4. Inventory Valuation Banner */}
         <div
           onClick={() => onNavigateToTab('inventory')}
           className="bg-white p-4 rounded-2xl border border-slate-200 hover:border-teal-300 hover:shadow-md transition cursor-pointer flex items-center justify-between"
@@ -1121,9 +1203,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </strong>
                   ।
                   <br />
-                  ✓ <strong>এমএফএস (বিকাশ, নগদ, রকেট) ব্যাংকিংয়ের কোনো প্রয়োজন নেই</strong>—কোনো
-                  মোবাইল ওয়ালেট ব্যালেন্সে প্রভাব পড়বে না।
+                  ✓ <strong>হিসাব নীতি:</strong> এটি বিক্রয় আয় নয়, এটি মালিকের মূলধন পরিবর্তন করে। উত্তোলনকৃত টাকাও ড্রয়ারের নগদ খরচ। মূলধনের অতিরিক্ত উত্তোলন ব্যবসায়ের আয় হ্রাস করে।
                 </p>
+                <div className="pt-1 flex items-center justify-between border-t border-slate-200/60 mt-1">
+                  <span className="text-[10px] text-slate-600">
+                    বর্তমান অবশিষ্ট মূলধন: <strong>{formatTaka(audit.netOwnerCapitalRemaining)}</strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDrawerModalOpen(false);
+                      onNavigateToTab('owner-ledger');
+                    }}
+                    className="text-[11px] font-bold text-indigo-700 hover:text-indigo-900 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Landmark className="w-3 h-3" />
+                    <span>মালিকের পূর্ণাঙ্গ খতিয়ান খুলুন ➜</span>
+                  </button>
+                </div>
               </div>
 
               {/* Action Buttons */}

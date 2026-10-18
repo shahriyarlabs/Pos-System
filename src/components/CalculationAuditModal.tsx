@@ -219,12 +219,24 @@ export const CalculationAuditModal: React.FC<CalculationAuditModalProps> = ({
                   <span>মোট পরিচালন খরচ:</span>
                   <span className="font-semibold text-rose-600">-{formatTaka(audit.totalOperatingExpenses)}</span>
                 </div>
-                <div className="flex justify-between pt-2 border-t border-slate-200 font-bold text-sm text-slate-900">
-                  <span>নিট মুনাফা / ব্যালেন্স:</span>
+                <div className="flex justify-between pt-1.5 border-t border-slate-200 font-bold text-xs text-slate-900">
+                  <span>পরিচালন মুনাফা (Operating Profit):</span>
                   <span className={audit.netOperatingProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}>
                     {formatTaka(audit.netOperatingProfit)}
                   </span>
                 </div>
+                {audit.excessDrawingsFromIncome > 0 && (
+                  <>
+                    <div className="flex justify-between text-purple-800 text-[11px] font-semibold">
+                      <span>মুলধনের অতিরিক্ত উত্তোলন (আয় হ্রাস):</span>
+                      <span>-{formatTaka(audit.excessDrawingsFromIncome)}</span>
+                    </div>
+                    <div className="flex justify-between pt-1 border-t border-purple-200 font-bold text-sm text-purple-950">
+                      <span>সমন্বয়ের পর অবশিষ্ট মুনাফা:</span>
+                      <span>{formatTaka(audit.adjustedNetProfit)}</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -246,6 +258,47 @@ export const CalculationAuditModal: React.FC<CalculationAuditModalProps> = ({
                   <span>মোট পাওনা বাজার বাকি:</span>
                   <span>{formatTaka(audit.totalPendingCustomerDues)}</span>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Owner Equity Equation Banner */}
+          <div className="bg-gradient-to-r from-indigo-50 to-slate-50 border border-indigo-200 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-indigo-200/80">
+              <div className="flex items-center gap-2 font-bold text-indigo-950 text-sm">
+                <Coins className="w-4 h-4 text-indigo-700" />
+                <span>মালিকের মূলধন ও ইকুইটি সমীকরণ (Owner Capital & Equity)</span>
+              </div>
+              <span className="text-[11px] text-indigo-800 font-semibold">
+                অবশিষ্ট মূলধন: {formatTaka(audit.netOwnerCapitalRemaining)}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              <div className="bg-white p-2 rounded-lg border border-indigo-100">
+                <span className="text-[10px] text-slate-500 block">মোট বিনিয়োগকৃত মূলধন</span>
+                <span className="font-bold text-emerald-700 text-sm">{formatTaka(audit.totalOwnerCapitalInvested)}</span>
+                <span className="text-[9px] text-slate-400 block">(প্রারম্ভিক + সব জমা)</span>
+              </div>
+              <div className="bg-white p-2 rounded-lg border border-indigo-100">
+                <span className="text-[10px] text-slate-500 block">মোট উত্তোলন (খরচ)</span>
+                <span className="font-bold text-amber-800 text-sm">{formatTaka(audit.totalOwnerDrawings)}</span>
+                <span className="text-[9px] text-slate-400 block">(ড্রয়ার থেকে গ্রহণ)</span>
+              </div>
+              <div className="bg-white p-2 rounded-lg border border-indigo-100">
+                <span className="text-[10px] text-slate-500 block">আজকের লেনদেন</span>
+                <span className="font-bold text-slate-800 text-xs">
+                  +{formatTaka(audit.todayOwnerDeposits)} / -{formatTaka(audit.todayOwnerDrawings)}
+                </span>
+                <span className="text-[9px] text-slate-400 block">(আজকের নিট: {formatTaka(audit.todayNetCapitalChange)})</span>
+              </div>
+              <div className="bg-white p-2 rounded-lg border border-indigo-100">
+                <span className="text-[10px] text-slate-500 block">আয়ের ওপর প্রভাব</span>
+                <span className={`font-bold text-xs ${audit.excessDrawingsFromIncome > 0 ? 'text-purple-800' : 'text-slate-600'}`}>
+                  {audit.excessDrawingsFromIncome > 0 ? `-${formatTaka(audit.excessDrawingsFromIncome)} (আয় হ্রাস)` : 'প্রভাবমুক্ত (০)'}
+                </span>
+                <span className="text-[9px] text-slate-400 block">
+                  {audit.excessDrawingsFromIncome > 0 ? 'মূলধনের বেশি উত্তোলন' : 'মূলধনের মধ্যে'}
+                </span>
               </div>
             </div>
           </div>
@@ -291,19 +344,25 @@ export const CalculationAuditModal: React.FC<CalculationAuditModalProps> = ({
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               <span>ক্যাশ ড্রয়ার, বাকি খাতা ও মালিকের লেনদেন নীতি (Accounting Standard)</span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-[11px]">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-[11px]">
               <div className="bg-white p-2.5 rounded-lg border border-amber-200/80">
-                <span className="font-bold text-amber-950 block mb-0.5">১. মালিকের ক্যাশ উত্তোলন ও জমা (Owner Equity):</span>
+                <span className="font-bold text-amber-950 block mb-0.5">১. মূলধন ও ক্যাশ ড্রয়ার:</span>
                 <p className="text-amber-800 leading-relaxed">
-                  • <strong>উত্তোলন করলে:</strong> শুধুমাত্র ক্যাশ ড্রয়ারের টাকা কমে।<br />
-                  • <strong>টাকা যুক্ত করলে:</strong> শুধুমাত্র ক্যাশ ড্রয়ারের টাকা বাড়ে।<br />
-                  কোনো অবস্থাতেই এমএফএস ব্যাংকিং (বিকাশ/নগদ/রকেট) প্রয়োজন নেই।
+                  • <strong>উত্তোলন করলে:</strong> ক্যাশ ড্রয়ার কমে, মূলধন কমে (ড্রয়ার খরচ)।<br />
+                  • <strong>টাকা যুক্ত করলে:</strong> ক্যাশ ড্রয়ার বাড়ে, মূলধন বৃদ্ধি পায়।<br />
+                  কোনো অবস্থাতেই এমএফএস ব্যাংকিং প্রয়োজন নেই।
                 </p>
               </div>
               <div className="bg-white p-2.5 rounded-lg border border-amber-200/80">
-                <span className="font-bold text-amber-950 block mb-0.5">২. বাকী খাতা ও ক্যাশ প্রবাহ:</span>
+                <span className="font-bold text-amber-950 block mb-0.5">২. মূলধনের বেশি উত্তোলন = আয় হ্রাস:</span>
                 <p className="text-amber-800 leading-relaxed">
-                  বাকিতে সেবা বা পণ্য বিক্রয় করলে <strong>ড্রয়ারে ক্যাশ বাড়ে না</strong> (বকেয়া খাতায় জমা হয়)। কাস্টমার যখন বাকি টাকা <strong>পরিশোধ করবেন, শুধুমাত্র তখনই ড্রয়ারে ক্যাশ বাড়বে</strong>।
+                  মালিকের উত্তোলন যদি মোট মূলধনের চেয়ে বেশি হয়ে যায়, তবে সেই অতিরিক্ত অংশ ব্যবসার অর্জিত নিট মুনাফা বা আয় থেকে কর্তন করে আয় হ্রাস করে।
+                </p>
+              </div>
+              <div className="bg-white p-2.5 rounded-lg border border-amber-200/80">
+                <span className="font-bold text-amber-950 block mb-0.5">৩. বাকী খাতা ও ক্যাশ প্রবাহ:</span>
+                <p className="text-amber-800 leading-relaxed">
+                  বাকিতে বিক্রয় করলে <strong>ড্রয়ারে ক্যাশ বাড়ে না</strong>। কাস্টমার যখন বাকি টাকা <strong>পরিশোধ করবেন, শুধুমাত্র তখনই ড্রয়ারে ক্যাশ বাড়বে</strong>।
                 </p>
               </div>
             </div>
