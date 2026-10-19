@@ -214,21 +214,21 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
         {/* Modal Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {/* Income vs Expense Toggle */}
-          <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-100 rounded-2xl">
+          {/* 3-Way Mode Toggle: Income, Expense, or Owner Transaction */}
+          <div className="grid grid-cols-3 gap-2 p-1.5 bg-slate-100 rounded-2xl">
             <button
               type="button"
               onClick={() => {
                 setType('INCOME');
                 setSelectedCategory('photocopy');
               }}
-              className={`py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-xs ${
-                type === 'INCOME'
+              className={`py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer ${
+                type === 'INCOME' && selectedCategory !== 'owner_deposit'
                   ? 'bg-emerald-600 text-white shadow-emerald-600/20'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <span>+ আয় / জমা (Income)</span>
+              <span>+ আয় / বিক্রি</span>
             </button>
             <button
               type="button"
@@ -237,15 +237,91 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 setSelectedCategory('supplies');
                 setPaymentMethod('CASH');
               }}
-              className={`py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-xs ${
-                type === 'EXPENSE'
+              className={`py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer ${
+                type === 'EXPENSE' && selectedCategory !== 'owner_drawing'
                   ? 'bg-rose-600 text-white shadow-rose-600/20'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <span>- ব্যয় / খরচ (Expense)</span>
+              <span>- খরচ / ক্রয়</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setType('EXPENSE');
+                setSelectedCategory('owner_drawing');
+                setPaymentMethod('CASH');
+                if (!note) setNote('মালিকের ক্যাশ উত্তোলন');
+              }}
+              className={`py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer ${
+                selectedCategory === 'owner_drawing' || selectedCategory === 'owner_deposit'
+                  ? 'bg-indigo-600 text-white shadow-indigo-600/20'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Coins className="w-4 h-4" />
+              <span>🏛️ মালিক খতিয়ান</span>
             </button>
           </div>
+
+          {/* Quick switcher for Owner Transactions */}
+          {(selectedCategory === 'owner_drawing' || selectedCategory === 'owner_deposit') && (
+            <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-2xl space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-indigo-950">
+                <span>মালিকের লেনদেনের ধরন বেছে নিন:</span>
+                <span className="text-[10px] text-indigo-600 uppercase font-black">
+                  {selectedCategory === 'owner_drawing' ? 'মূলধন হ্রাস পাবে' : 'মূলধন বৃদ্ধি পাবে'}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setType('EXPENSE');
+                    setSelectedCategory('owner_drawing');
+                    setPaymentMethod('CASH');
+                    setNote('মালিকের ড্রয়ার থেকে ক্যাশ উত্তোলন');
+                  }}
+                  className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                    selectedCategory === 'owner_drawing'
+                      ? 'bg-amber-500 text-white border-amber-600 font-bold shadow-xs'
+                      : 'bg-white text-slate-700 border-indigo-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="text-xs font-bold flex items-center gap-1.5">
+                    <Coins className="w-4 h-4" />
+                    <span>- ক্যাশ উত্তোলন (টাকা নেওয়া)</span>
+                  </div>
+                  <div className={`text-[10px] mt-0.5 ${selectedCategory === 'owner_drawing' ? 'text-amber-100' : 'text-slate-500'}`}>
+                    মুলধন কমবে • ড্রয়ারের ক্যাশ খরচ
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setType('INCOME');
+                    setSelectedCategory('owner_deposit');
+                    setPaymentMethod('CASH');
+                    setNote('মালিকের ড্রয়ারে ক্যাশ টাকা যুক্ত / মূলধন জমা');
+                  }}
+                  className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                    selectedCategory === 'owner_deposit'
+                      ? 'bg-emerald-600 text-white border-emerald-700 font-bold shadow-xs'
+                      : 'bg-white text-slate-700 border-indigo-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="text-xs font-bold flex items-center gap-1.5">
+                    <Coins className="w-4 h-4" />
+                    <span>+ মূলধন ক্যাশ জমা (টাকা যুক্ত)</span>
+                  </div>
+                  <div className={`text-[10px] mt-0.5 ${selectedCategory === 'owner_deposit' ? 'text-emerald-100' : 'text-slate-500'}`}>
+                    মুলধন বাড়বে • ড্রয়ার ক্যাশ বাড়বে
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Service Category Selection */}
           <div>
@@ -550,25 +626,23 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             />
           </div>
 
-          {/* Auto Print Receipt Toggle (Only for Income) */}
-          {type === 'INCOME' && (
-            <div className="flex items-center gap-2 pt-1">
-              <input
-                type="checkbox"
-                id="autoPrintReceipt"
-                checked={autoPrintReceipt}
-                onChange={(e) => setAutoPrintReceipt(e.target.checked)}
-                className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
-              />
-              <label
-                htmlFor="autoPrintReceipt"
-                className="text-xs text-slate-700 font-medium flex items-center gap-1.5 cursor-pointer"
-              >
-                <Printer className="w-3.5 h-3.5 text-emerald-600" />
-                <span>সংরক্ষণের পর তাৎক্ষণিক ক্যাশ মেমো / রসিদ প্রিন্ট করুন</span>
-              </label>
-            </div>
-          )}
+          {/* Auto Print Receipt Toggle (All transactions: single Customer Copy only) */}
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              type="checkbox"
+              id="autoPrintReceipt"
+              checked={autoPrintReceipt}
+              onChange={(e) => setAutoPrintReceipt(e.target.checked)}
+              className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+            />
+            <label
+              htmlFor="autoPrintReceipt"
+              className="text-xs text-slate-700 font-medium flex items-center gap-1.5 cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5 text-emerald-600" />
+              <span>সংরক্ষণের পর তাৎক্ষণিক ক্যাশ মেমো প্রিন্ট করুন <b className="text-emerald-700">(শুধুমাত্র একক গ্রাহক কপি)</b></span>
+            </label>
+          </div>
 
           {/* Submit & Cancel Buttons */}
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">

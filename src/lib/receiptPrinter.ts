@@ -191,30 +191,15 @@ export function generateReceiptHtml(
 
   const isDue = trx.paymentMethod === 'DUE';
 
-  // Format 1: 1/4 Landscape A4 for Epson L3210
+  // Format 1: 1/4 Landscape A4 for Epson L3210 (Strictly single Customer Copy)
   if (format === 'quarter_a4') {
-    const isSingle = quarterA4Mode === 'left_single' || quarterA4Mode === 'single';
-
-    if (quarterA4Mode === '4in1') {
-      // 4 Vouchers on a single Landscape A4 page in 2x2 grid (Printed 4 at a time)
-      return generateQuarterA4GridHtml({
-        topLeft: generateQuarterA4SingleCardHtml(trx, settings, 'গ্রাহক কপি (Customer Copy)'),
-        topRight: generateQuarterA4SingleCardHtml(trx, settings, 'দোকান/অফিস কপি (Office Copy)'),
-        bottomLeft: generateQuarterA4SingleCardHtml(trx, settings, 'কাউন্টার কপি (Counter Copy)'),
-        bottomRight: generateQuarterA4SingleCardHtml(trx, settings, 'অতিরিক্ত কপি (Extra Copy)'),
-      });
-    }
-
-    if (quarterA4Mode === 'dual') {
-      // 2 Vouchers side-by-side (Customer Copy + Office Copy) on Landscape A4 top half
-      return generateQuarterA4GridHtml({
-        topLeft: generateQuarterA4SingleCardHtml(trx, settings, 'গ্রাহক কপি (Customer Copy)'),
-        topRight: generateQuarterA4SingleCardHtml(trx, settings, 'দোকান/অফিস কপি (Office Copy)'),
-      });
-    }
-
-    // Default: Single 1/4 A4 Landscape Voucher firmly positioned at the LEFT SIDE OF THE PAPER
-    const voucherCard = generateQuarterA4SingleCardHtml(trx, settings, 'গ্রাহক কপি (ক্যাশ ভাউচার)');
+    // নিয়ম: "only customer copy print in voucher print"
+    // শুধুমাত্র একক গ্রাহক কপি প্রিন্ট হবে (অফিস বা দোকান রেকর্ড কপি প্রিন্ট হবে না)
+    const voucherCard = generateQuarterA4SingleCardHtml(
+      trx,
+      settings,
+      'গ্রাহক কপি (Customer Copy)'
+    );
 
     if (quadrant === 'left_bottom') {
       return generateQuarterA4GridHtml({ bottomLeft: voucherCard });
@@ -223,7 +208,7 @@ export function generateReceiptHtml(
     } else if (quadrant === 'right_bottom') {
       return generateQuarterA4GridHtml({ bottomRight: voucherCard });
     } else {
-      // Default: Top-Left (strictly left side of the paper)
+      // Default: Top-Left (একক গ্রাহক কপি)
       return generateQuarterA4GridHtml({ topLeft: voucherCard });
     }
   }

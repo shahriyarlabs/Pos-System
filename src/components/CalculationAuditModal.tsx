@@ -204,11 +204,11 @@ export const CalculationAuditModal: React.FC<CalculationAuditModalProps> = ({
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
               <div className="flex items-center gap-2 font-bold text-slate-800 text-sm mb-2 border-b border-slate-200 pb-1.5">
                 <TrendingUp className="w-4 h-4 text-blue-600" />
-                ২. আজকের লাভ-লোকসান হিসাব
+                ২. সহজ লাভ-লোকসান হিসাব (Profit & Loss)
               </div>
               <div className="space-y-1.5 text-xs text-slate-600">
                 <div className="flex justify-between">
-                  <span>মোট বিক্রয় ও সেবা আয়:</span>
+                  <span>মোট বিক্রয়মূল্য (আয় - মালিকের জমা বাদে):</span>
                   <span className="font-semibold text-slate-800">{formatTaka(audit.totalSalesAndServicesIncome)}</span>
                 </div>
                 <div className="flex justify-between">
@@ -216,11 +216,11 @@ export const CalculationAuditModal: React.FC<CalculationAuditModalProps> = ({
                   <span className="font-semibold text-emerald-600">+{formatTaka(audit.mfsCommissionsEarned)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>মোট পরিচালন খরচ:</span>
+                  <span>মোট ক্রয়মূল্য ও দোকান খরচ (উত্তোলন বাদে):</span>
                   <span className="font-semibold text-rose-600">-{formatTaka(audit.totalOperatingExpenses)}</span>
                 </div>
                 <div className="flex justify-between pt-1.5 border-t border-slate-200 font-bold text-xs text-slate-900">
-                  <span>পরিচালন মুনাফা (Operating Profit):</span>
+                  <span>সহজ নিট লাভ (বিক্রি - ক্রয়মূল্য/খরচ):</span>
                   <span className={audit.netOperatingProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}>
                     {formatTaka(audit.netOperatingProfit)}
                   </span>

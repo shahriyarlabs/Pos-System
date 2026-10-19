@@ -7,9 +7,14 @@ import {
   Search,
   Send,
   Scissors,
+  Coins,
+  ArrowUpRight,
+  ArrowDownRight,
+  ShoppingBag,
 } from 'lucide-react';
 import { Customer, ShopSettings, Transaction } from '../types';
 import { generateReceiptShareText } from '../lib/receiptPrinter';
+import { isOwnerDepositTrx, isOwnerDrawingTrx } from '../lib/calculations';
 
 interface ReportsAndReceiptsProps {
   transactions: Transaction[];
@@ -208,11 +213,28 @@ export const ReportsAndReceipts: React.FC<ReportsAndReceiptsProps> = ({
   const [copiedText, setCopiedText] = useState(false);
   const [previewTab, setPreviewTab] = useState<'sheet' | 'zoom'>('sheet');
 
+  const [typeFilter, setTypeFilter] = useState<'ALL' | 'INCOME' | 'OWNER' | 'EXPENSE'>('ALL');
+
   // Memoize filtered receipt transactions for lightning fast search and rendering
   const receiptTransactions = useMemo(() => {
     const q = searchReceiptQuery.trim().toLowerCase();
     return transactions
-      .filter((t) => t.type === 'INCOME')
+      .filter((t) => {
+        const isDraw = isOwnerDrawingTrx(t);
+        const isDep = !isDraw && isOwnerDepositTrx(t);
+        const isOwner = isDraw || isDep;
+
+        if (typeFilter === 'INCOME') {
+          return t.type === 'INCOME' && !isOwner;
+        }
+        if (typeFilter === 'EXPENSE') {
+          return t.type === 'EXPENSE' && !isOwner;
+        }
+        if (typeFilter === 'OWNER') {
+          return isOwner;
+        }
+        return true;
+      })
       .filter((t) => {
         if (!q) return true;
         return (
@@ -220,10 +242,11 @@ export const ReportsAndReceipts: React.FC<ReportsAndReceiptsProps> = ({
           (t.customerName && t.customerName.toLowerCase().includes(q)) ||
           (t.customerPhone && t.customerPhone.includes(q)) ||
           t.categoryLabelBn.toLowerCase().includes(q) ||
+          (t.note && t.note.toLowerCase().includes(q)) ||
           String(t.amount).includes(q)
         );
       });
-  }, [transactions, searchReceiptQuery]);
+  }, [transactions, searchReceiptQuery, typeFilter]);
 
   const triggerPrint = () => {
     if (!activeReceiptTransaction) return;
@@ -259,11 +282,17 @@ export const ReportsAndReceipts: React.FC<ReportsAndReceiptsProps> = ({
         <div>
           <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
             <FileText className="w-5 h-5 text-emerald-600" />
-            <span>কাস্টমার ক্যাশ মেমো (Receipts)</span>
+            <span>ক্যাশ ভাউচার ও মেমো প্রিন্ট (Voucher Print)</span>
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            ফরম্যাট: A4 ল্যান্ডস্কেপ পেপারের ডান পাশে একক ভাউচার (দৈর্ঘ্য: ৮ ইঞ্চি × প্রস্থ: ৩ ইঞ্চি)
+            নিয়ম: <b>শুধুমাত্র একক গ্রাহক কপি (Customer Copy Only)</b> প্রিন্ট হবে। কোনো ডুপ্লিকেট বা অফিস কপি প্রিন্ট হয় না।
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-full text-xs font-bold">
+            <Check className="w-3.5 h-3.5 text-emerald-600" />
+            <span>একক গ্রাহক কপি মোড সক্রিয়</span>
+          </span>
         </div>
       </div>
 
@@ -271,8 +300,49 @@ export const ReportsAndReceipts: React.FC<ReportsAndReceiptsProps> = ({
         {/* Left: transaction list */}
         <div className="lg:col-span-5 bg-white p-5 rounded-3xl border border-slate-200 shadow-xs no-print space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-bold text-slate-900">রসিদ নির্বাচন করুন</h3>
-            <span className="text-xs text-slate-400">{receiptTransactions.length} টি লেনদেন</span>
+            <h3 className="text-sm font-bold text-slate-900">ভাউচার নির্বাচন করুন</h3>
+            <span className="text-xs text-slate-400">{receiptTransactions.length} টি ভাউচার</span>
+          </div>
+
+          {/* Quick Filter Tabs */}
+          <div className="grid grid-cols-4 gap-1 p-1 bg-slate-100 rounded-xl text-[11px] font-bold">
+            <button
+              type="button"
+              onClick={() => setTypeFilter('ALL')}
+              className={`py-1.5 rounded-lg transition cursor-pointer text-center ${
+                typeFilter === 'ALL' ? 'bg-white text-slate-900 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              সব ({transactions.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setTypeFilter('INCOME')}
+              className={`py-1.5 rounded-lg transition cursor-pointer text-center ${
+                typeFilter === 'INCOME' ? 'bg-emerald-600 text-white shadow-xs font-black' : 'text-slate-600 hover:text-emerald-700'
+              }`}
+            >
+              বিক্রি/আয়
+            </button>
+            <button
+              type="button"
+              onClick={() => setTypeFilter('OWNER')}
+              className={`py-1.5 rounded-lg transition cursor-pointer text-center flex items-center justify-center gap-1 ${
+                typeFilter === 'OWNER' ? 'bg-indigo-600 text-white shadow-xs font-black' : 'text-slate-600 hover:text-indigo-700'
+              }`}
+            >
+              <Coins className="w-3 h-3" />
+              <span>মালিক</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setTypeFilter('EXPENSE')}
+              className={`py-1.5 rounded-lg transition cursor-pointer text-center ${
+                typeFilter === 'EXPENSE' ? 'bg-rose-600 text-white shadow-xs font-black' : 'text-slate-600 hover:text-rose-700'
+              }`}
+            >
+              খরচ/ক্রয়
+            </button>
           </div>
 
           <div className="relative">
@@ -281,47 +351,78 @@ export const ReportsAndReceipts: React.FC<ReportsAndReceiptsProps> = ({
               type="text"
               value={searchReceiptQuery}
               onChange={(e) => setSearchReceiptQuery(e.target.value)}
-              placeholder="চালান নং বা কাস্টমারের নাম দিয়ে খুঁজুন..."
+              placeholder="চালান নং, কাস্টমার, বা কাজের বিবরণ দিয়ে খুঁজুন..."
               className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-hidden focus:border-emerald-500"
             />
           </div>
 
-          <div className="space-y-2 max-h-[560px] overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
             {receiptTransactions.length === 0 ? (
               <div className="py-8 text-center text-slate-400 text-xs">
-                কোনো লেনদেন পাওয়া যায়নি
+                কোনো ভাউচার পাওয়া যায়নি
               </div>
             ) : (
               receiptTransactions.map((trx) => {
                 const isSelected = activeReceiptTransaction?.id === trx.id;
+                const isDraw = isOwnerDrawingTrx(trx);
+                const isDep = !isDraw && isOwnerDepositTrx(trx);
+
                 return (
                   <div
                     key={trx.id}
                     onClick={() => onSelectReceipt(trx)}
-                    className={`p-3.5 rounded-2xl border text-xs cursor-pointer transition flex items-center justify-between ${
+                    className={`p-3 rounded-2xl border text-xs cursor-pointer transition flex items-center justify-between ${
                       isSelected
-                        ? 'bg-emerald-50/80 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
+                        ? isDraw
+                          ? 'bg-amber-50/90 border-amber-500 ring-2 ring-amber-500/20 shadow-xs'
+                          : isDep
+                          ? 'bg-indigo-50/90 border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs'
+                          : 'bg-emerald-50/80 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
                         : 'bg-white border-slate-200 hover:border-slate-300'
                     }`}
                   >
-                    <div>
-                      <div className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1 pr-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-bold text-slate-800">{trx.categoryLabelBn}</span>
+                        {isDraw ? (
+                          <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-900 rounded font-black">
+                            উত্তোলন • মূলধন হ্রাস
+                          </span>
+                        ) : isDep ? (
+                          <span className="text-[9px] px-1.5 py-0.5 bg-indigo-100 text-indigo-900 rounded font-black">
+                            মূলধন জমা
+                          </span>
+                        ) : trx.type === 'EXPENSE' ? (
+                          <span className="text-[9px] px-1.5 py-0.5 bg-rose-100 text-rose-800 rounded font-bold">
+                            খরচ
+                          </span>
+                        ) : null}
                         <span className="font-mono text-[10px] text-slate-400 font-semibold">
                           {trx.invoiceNo}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        {trx.customerName || 'সরাসরি কাস্টমার'} •{' '}
+                      <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                        {trx.customerName || (isDraw || isDep ? 'স্বত্বাধিকারী' : 'সরাসরি কাস্টমার')} •{' '}
                         {new Date(trx.timestamp).toLocaleDateString('bn-BD')}
+                        {trx.note ? ` • ${trx.note}` : ''}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <span className="font-black text-slate-900 block">
-                        ৳ {trx.amount.toLocaleString()}
+                    <div className="text-right shrink-0">
+                      <span
+                        className={`font-black text-sm block ${
+                          isDraw
+                            ? 'text-amber-800'
+                            : isDep
+                            ? 'text-indigo-700'
+                            : trx.type === 'EXPENSE'
+                            ? 'text-rose-700'
+                            : 'text-emerald-700'
+                        }`}
+                      >
+                        {isDraw ? '-' : isDep ? '+' : ''}৳ {trx.amount.toLocaleString()}
                       </span>
-                      <span className="text-[10px] text-emerald-700 font-semibold">
-                        {trx.paymentMethodLabelBn}
+                      <span className="text-[10px] text-slate-500 font-semibold">
+                        {trx.paymentMethodLabelBn || 'ক্যাশ'}
                       </span>
                     </div>
                   </div>
@@ -408,13 +509,11 @@ export const ReportsAndReceipts: React.FC<ReportsAndReceiptsProps> = ({
                     {/* Left area: Empty A4 paper section */}
                     <div className="h-full flex-1 flex flex-col items-center justify-center text-slate-400 p-4 text-center select-none bg-slate-50/40 relative">
                       <div className="border border-dashed border-slate-300 rounded-xl p-3 max-w-xs text-center">
-                        <p className="text-[11px] font-semibold text-slate-600">
-                          A4 ল্যান্ডস্কেপ পেপার ({settings.voucherCopiesCount === 2 || settings.voucherPaperSize === 'laser_quarter_a4' ? 'ডুয়েল কপি মোড' : 'কোয়ার্টার স্লিপ মোড'})
+                        <p className="text-[11px] font-semibold text-slate-700">
+                          A4 ল্যান্ডস্কেপ পেপার (শুধুমাত্র গ্রাহক কপি মোড)
                         </p>
                         <p className="text-[9px] text-slate-400 mt-1">
-                          {settings.voucherCopiesCount === 2 || settings.voucherPaperSize === 'laser_quarter_a4'
-                            ? 'পেপারের ডান অর্ধে পাশাপাশি ২টি কপি (গ্রাহক কপি ও দোকান রেকর্ড কপি) প্রিন্ট হবে।'
-                            : 'প্রিন্ট করার সময় ভাউচারটি পেপারের ডান প্রান্তে ৩ ইঞ্চি অংশে প্রিন্ট হবে।'}
+                          প্রিন্ট করার সময় ভাউচারটি পেপারের ডান প্রান্তে ৩ ইঞ্চি অংশে শুধুমাত্র একক গ্রাহক কপি হিসেবে প্রিন্ট হবে।
                         </p>
                       </div>
 
@@ -429,24 +528,7 @@ export const ReportsAndReceipts: React.FC<ReportsAndReceiptsProps> = ({
                       </div>
                     </div>
 
-                    {/* Dual Copy: Office Copy if 2 copies enabled */}
-                    {(settings.voucherCopiesCount === 2 || settings.voucherPaperSize === 'laser_quarter_a4') && (
-                      <div
-                        className="h-full p-2.5 bg-white shrink-0 border-l border-r border-dashed border-slate-300 relative"
-                        style={{ width: '25%' }}
-                      >
-                        <VoucherContent
-                          trx={activeReceiptTransaction}
-                          settings={settings}
-                          copyLabel="দোকান কপি"
-                        />
-                        <div className="absolute right-0 top-0 bottom-0 border-r border-dashed border-slate-400 flex flex-col justify-around items-center pr-0.5 text-slate-400 text-[7px]">
-                          <Scissors className="w-2 h-2" />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Right area: Customer Copy */}
+                    {/* Right area: Customer Copy ONLY */}
                     <div
                       className="h-full p-2.5 bg-white shrink-0 border-l border-slate-200"
                       style={{ width: '25%' }}
@@ -481,41 +563,18 @@ export const ReportsAndReceipts: React.FC<ReportsAndReceiptsProps> = ({
         </div>
       </div>
 
-      {/* Hidden print sheet: A4 landscape voucher print */}
+      {/* Hidden print sheet: A4 landscape voucher print - ONLY CUSTOMER COPY */}
       <div id="print-root" className="print-only">
         <div id="a4-print-sheet">
-          {settings.voucherCopiesCount === 2 || settings.voucherPaperSize === 'laser_quarter_a4' ? (
-            <div className="voucher-dual-print">
-              {activeReceiptTransaction && (
-                <div>
-                  <VoucherContent
-                    trx={activeReceiptTransaction}
-                    settings={settings}
-                    copyLabel="দোকান কপি"
-                  />
-                </div>
-              )}
-              {activeReceiptTransaction && (
-                <div>
-                  <VoucherContent
-                    trx={activeReceiptTransaction}
-                    settings={settings}
-                    copyLabel="গ্রাহক কপি"
-                  />
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="voucher-right-print">
-              {activeReceiptTransaction && (
-                <VoucherContent
-                  trx={activeReceiptTransaction}
-                  settings={settings}
-                  copyLabel="গ্রাহক কপি"
-                />
-              )}
-            </div>
-          )}
+          <div className="voucher-right-print">
+            {activeReceiptTransaction && (
+              <VoucherContent
+                trx={activeReceiptTransaction}
+                settings={settings}
+                copyLabel="গ্রাহক কপি"
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>

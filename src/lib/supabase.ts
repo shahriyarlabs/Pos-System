@@ -1251,7 +1251,7 @@ export async function updateSupabaseSettings(
     showSignature: settings.showSignatureOnReceipt !== false,
     showLogo: settings.showLogoOnReceipt !== false,
     paperSize: settings.voucherPaperSize || settings.receiptType || 'laser_half_a4',
-    copiesCount: settings.voucherCopiesCount || 2,
+    copiesCount: settings.voucherCopiesCount || 1,
     greeting: settings.receiptGreeting || 'বিসমিল্লাহির রাহমানির রাহিম',
   };
   const footerNotePayload = `METADATA:${JSON.stringify(metadataPayload)}`;

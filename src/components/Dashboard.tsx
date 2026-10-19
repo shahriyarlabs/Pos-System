@@ -174,17 +174,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     for (let i = 0; i < filteredTransactions.length; i++) {
       const t = filteredTransactions[i];
-      const isDep = isOwnerDepositTrx(t);
       const isDraw = isOwnerDrawingTrx(t);
+      const isDep = !isDraw && isOwnerDepositTrx(t);
 
-      if (isDep) {
-        capitalDeposits += t.amount;
-      } else if (isDraw) {
+      if (isDraw) {
         ownerDrawings += t.amount;
+      } else if (isDep) {
+        capitalDeposits += t.amount;
       } else if (t.type === 'INCOME') {
         salesIncome += t.amount;
       } else if (t.type === 'EXPENSE') {
-        operatingExpense += t.amount;
+        operatingExpense += t.amount; // ক্রয়মূল্য ও দোকান খরচ
       }
     }
 
@@ -193,12 +193,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
     let allTimeCap = initialCap;
     let allTimeDraw = 0;
     for (const trx of transactions) {
-      if (isOwnerDepositTrx(trx)) allTimeCap += trx.amount;
-      if (isOwnerDrawingTrx(trx)) allTimeDraw += trx.amount;
+      if (isOwnerDrawingTrx(trx)) {
+        allTimeDraw += trx.amount;
+      } else if (isOwnerDepositTrx(trx)) {
+        allTimeCap += trx.amount;
+      }
     }
     const excessDrawings = Math.max(0, allTimeDraw - allTimeCap);
 
-    // পরিচালন মুনাফা (Sales - Operating Expense)
+    // সহজ লাভ: বিক্রয়মূল্য - ক্রয়মূল্য ও দোকান খরচ
     const opProfit = salesIncome - operatingExpense;
     // যদি মূলধনের অতিরিক্ত উত্তোলন থাকে, তবে তা আয়/লাভ হ্রাস করে:
     const finalProfit = excessDrawings > 0 ? Math.max(0, opProfit - excessDrawings) : opProfit;
@@ -432,7 +435,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-white p-5 rounded-2xl border border-emerald-200 shadow-xs relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-emerald-900 uppercase tracking-wider">
-              {period === 'today' ? 'আজকের মোট আয় ও বিক্রি' : 'নির্বাচিত মেয়াদের আয়'}
+              {period === 'today' ? 'আজকের মোট বিক্রয়মূল্য (আয়)' : 'নির্বাচিত মেয়াদের মোট বিক্রয়'}
             </span>
             <div className="p-2 bg-emerald-600 text-white rounded-xl shadow-sm">
               <TrendingUp className="w-5 h-5" />
@@ -446,18 +449,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <span>
                 {periodCapitalDeposits > 0
                   ? `বিক্রি: ${formatTaka(periodIncome)} • মূলধন জমা: +${formatTaka(periodCapitalDeposits)} (আয় নয়)`
-                  : 'ফটোকপি, প্রিন্ট, পণ্য ও সেবা বিক্রি'}
+                  : 'মালিকের জমা বাদে সকল সেবা ও পণ্যের বিক্রয়মূল্য'}
               </span>
               <span className="text-emerald-700 font-semibold">{filteredTransactions.filter((t) => t.type === 'INCOME' && !isOwnerDepositTrx(t)).length} টি ভাউচার</span>
             </div>
           </div>
         </div>
 
-        {/* 3. Total Expense Card */}
+        {/* 3. Total Expense / Purchase Cost Card */}
         <div className="bg-gradient-to-br from-rose-500/10 via-rose-500/5 to-white p-5 rounded-2xl border border-rose-200 shadow-xs relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-rose-900 uppercase tracking-wider">
-              {period === 'today' ? 'আজকের মোট খরচ' : 'নির্বাচিত মেয়াদের খরচ'}
+              {period === 'today' ? 'মোট ক্রয়মূল্য ও দোকান খরচ' : 'নির্বাচিত মেয়াদের খরচ'}
             </span>
             <div className="p-2 bg-rose-600 text-white rounded-xl shadow-sm">
               <TrendingDown className="w-5 h-5" />
@@ -465,24 +468,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
           <div className="mt-3">
             <div className="text-2xl sm:text-3xl font-black text-rose-700 tracking-tight">
-              {formatTaka(periodExpense)}
+              {formatTaka(periodExpense - periodOwnerDrawings)}
             </div>
             <div className="text-[11px] text-slate-600 mt-1 flex items-center justify-between">
               <span>
                 {periodOwnerDrawings > 0
-                  ? `দোকান খরচ: ${formatTaka(periodExpense - periodOwnerDrawings)} • মালিকের উত্তোলন: ${formatTaka(periodOwnerDrawings)}`
-                  : 'দোকান ভাড়া, বিদ্যুৎ, চা ও মালামাল'}
+                  ? `ক্রয়/খরচ: ${formatTaka(periodExpense - periodOwnerDrawings)} • মালিকের ড্রয়িং: ${formatTaka(periodOwnerDrawings)} (আলাদা)`
+                  : 'মালিকের উত্তোলন বাদে ক্রয়মূল্য, ভাড়া, বিদ্যুৎ ও মালামাল'}
               </span>
-              <span className="text-rose-700 font-semibold">{filteredTransactions.filter((t) => t.type === 'EXPENSE').length} টি খরচ</span>
+              <span className="text-rose-700 font-semibold">{filteredTransactions.filter((t) => t.type === 'EXPENSE' && !isOwnerDrawingTrx(t)).length} টি খরচ</span>
             </div>
           </div>
         </div>
 
-        {/* 4. Net Operating Profit Card */}
+        {/* 4. Simple Net Profit Card */}
         <div className="bg-gradient-to-br from-blue-500/10 via-blue-500/5 to-white p-5 rounded-2xl border border-blue-200 shadow-xs relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-blue-900 uppercase tracking-wider">
-              নিট লাভ / উদ্বৃত্ত (Net Profit)
+              সহজ নিট লাভ (বিক্রি - ক্রয়/খরচ)
             </span>
             <div className="p-2 bg-blue-600 text-white rounded-xl shadow-sm">
               <Sparkles className="w-5 h-5" />
@@ -497,10 +500,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="text-[11px] text-slate-600 mt-1">
               {periodExcessDrawings > 0 ? (
                 <span className="text-purple-700 font-semibold">
-                  মূলধনের অতিরিক্ত ৳{periodExcessDrawings} উত্তোলন সমন্বয় করা হয়েছে
+                  মূলধনের অতিরিক্ত ৳{periodExcessDrawings} উত্তোলন লাভ থেকে সমন্বিত
                 </span>
               ) : periodNetProfit >= 0 ? (
-                'আয় থেকে ব্যয় বাদ দিয়ে মুনাফা'
+                'বিক্রয়মূল্য - ক্রয়মূল্য/খরচ + কমিশন = সহজ লাভ'
               ) : (
                 'খরচ বেশি হয়েছে'
               )}
@@ -799,15 +802,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       {trx.note && <div className="text-[11px] text-slate-500">{trx.note}</div>}
                     </td>
                     <td className="py-3 px-4">
-                      {trx.category === 'owner_drawing' || trx.category === 'owner_deposit' ? (
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded-md text-[11px] font-bold ${
-                            trx.category === 'owner_deposit'
-                              ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                              : 'bg-amber-100 text-amber-900 border border-amber-300'
-                          }`}
-                        >
-                          দোকানের মালিক ({settings.ownerName || 'স্বত্বাধিকারী'})
+                      {isOwnerDrawingTrx(trx) ? (
+                        <span className="inline-block px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                          মালিকের উত্তোলন • মূলধন হ্রাস
+                        </span>
+                      ) : isOwnerDepositTrx(trx) ? (
+                        <span className="inline-block px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                          মালিকের মূলধন জমা (+মূলধন)
                         </span>
                       ) : trx.customerName ? (
                         <div>
@@ -823,9 +824,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <td className="py-3 px-4">
                       <span
                         className={`inline-block px-2 py-0.5 rounded-md text-[11px] font-semibold border ${
-                          trx.category === 'owner_drawing'
+                          isOwnerDrawingTrx(trx)
                             ? 'bg-amber-100 text-amber-900 border-amber-300 font-bold'
-                            : trx.category === 'owner_deposit'
+                            : isOwnerDepositTrx(trx)
                             ? 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold'
                             : trx.paymentMethod === 'CASH'
                             ? 'bg-amber-50 text-amber-800 border-amber-200'
@@ -834,9 +835,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             : 'bg-purple-50 text-purple-800 border-purple-200'
                         }`}
                       >
-                        {trx.category === 'owner_drawing'
+                        {isOwnerDrawingTrx(trx)
                           ? 'ক্যাশ ড্রয়ার (উত্তোলন)'
-                          : trx.category === 'owner_deposit'
+                          : isOwnerDepositTrx(trx)
                           ? 'ক্যাশ ড্রয়ার (টাকা যুক্ত)'
                           : (trx.paymentMethodLabelBn || trx.paymentMethod)}
                       </span>
@@ -844,16 +845,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <td className="py-3 px-4 text-right">
                       <span
                         className={`font-black text-sm ${
-                          trx.category === 'owner_drawing'
+                          isOwnerDrawingTrx(trx)
                             ? 'text-amber-800'
-                            : trx.category === 'owner_deposit'
+                            : isOwnerDepositTrx(trx)
                             ? 'text-emerald-700 font-black'
                             : trx.type === 'INCOME'
                             ? 'text-emerald-600'
                             : 'text-rose-600'
                         }`}
                       >
-                        {trx.type === 'INCOME' ? '+' : '-'}
+                        {isOwnerDrawingTrx(trx) ? '-' : isOwnerDepositTrx(trx) ? '+' : trx.type === 'INCOME' ? '+' : '-'}
                         {formatTaka(trx.amount)}
                       </span>
                     </td>

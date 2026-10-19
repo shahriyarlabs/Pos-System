@@ -41,7 +41,7 @@ export const ShopSettingsView: React.FC<ShopSettingsViewProps> = ({
     showSignatureOnReceipt: settings.showSignatureOnReceipt !== false,
     showLogoOnReceipt: settings.showLogoOnReceipt !== false,
     voucherPaperSize: settings.voucherPaperSize || settings.receiptType || 'laser_half_a4',
-    voucherCopiesCount: settings.voucherCopiesCount || 2,
+    voucherCopiesCount: settings.voucherCopiesCount || 1,
     receiptGreeting: settings.receiptGreeting || 'বিসমিল্লাহির রাহমানির রাহিম',
   });
 
@@ -62,7 +62,7 @@ export const ShopSettingsView: React.FC<ShopSettingsViewProps> = ({
       showSignatureOnReceipt: settings.showSignatureOnReceipt !== false,
       showLogoOnReceipt: settings.showLogoOnReceipt !== false,
       voucherPaperSize: settings.voucherPaperSize || settings.receiptType || 'laser_half_a4',
-      voucherCopiesCount: settings.voucherCopiesCount || 2,
+      voucherCopiesCount: settings.voucherCopiesCount || 1,
       receiptGreeting: settings.receiptGreeting || 'বিসমিল্লাহির রাহমানির রাহিম',
     });
   }, [settings]);

@@ -75,35 +75,141 @@ export function isToday(timestamp: string): boolean {
 }
 
 /**
- * Identifies if a transaction is an Owner Deposit / Capital Injection
- * মালিকের টাকা যুক্ত / মূলধন বিনিয়োগ (আয় নয়, মূলধন বৃদ্ধি)
- */
-export function isOwnerDepositTrx(trx: Transaction): boolean {
-  if (!trx) return false;
-  return (
-    (trx.category as string) === 'owner_deposit' ||
-    Boolean(
-      trx.categoryLabelBn &&
-      (trx.categoryLabelBn.includes('জমা') || trx.categoryLabelBn.includes('যুক্ত') || trx.categoryLabelBn.includes('মূলধন')) &&
-      trx.categoryLabelBn.includes('মালিক')
-    ) ||
-    Boolean(trx.categoryLabelEn && /owner deposit|capital|owner cash/i.test(trx.categoryLabelEn)) ||
-    Boolean(trx.note && /মালিক.*(জমা|যুক্ত|মূলধন)|owner.*(deposit|capital)/i.test(trx.note))
-  );
-}
-
-/**
  * Identifies if a transaction is an Owner Drawing / Withdrawal
- * মালিকের উত্তোলন (ব্যক্তিগত খরচ, ড্রয়ারের ক্যাশ হ্রাস)
+ * মালিকের টাকা উত্তোলন (ব্যক্তিগত খরচ, ড্রয়ারের ক্যাশ হ্রাস, মূলধন হ্রাস)
+ * রুল: মালিক টাকা উত্তোলন করলে মূলধন কমে। পূর্বে অনেকগুলো মালিকের উত্তোলন ভাউচার
+ * ভুলবশত মূলধন বৃদ্ধি বা বিক্রয় আয় হিসেবে রেকর্ড হয়েছিল—এই ফাংশনটি অতীতের এবং বর্তমানের
+ * সকল উত্তোলন ভাউচারকে কঠোরভাবে শনাক্ত করে মূলধন হ্রাস হিসেবে গণনা করে।
  */
 export function isOwnerDrawingTrx(trx: Transaction): boolean {
   if (!trx) return false;
-  return (
-    (trx.category as string) === 'owner_drawing' ||
-    Boolean(trx.categoryLabelBn && (trx.categoryLabelBn.includes('উত্তোলন') || trx.categoryLabelBn.includes('ড্রয়িং'))) ||
-    Boolean(trx.categoryLabelEn && /drawing|withdraw/i.test(trx.categoryLabelEn)) ||
-    Boolean(trx.note && /উত্তোলন|ড্রয়িং|drawing|withdraw/i.test(trx.note))
-  );
+
+  // 1. Explicit Categories (all variations)
+  const cat = String(trx.category || '').toLowerCase().trim();
+  if (
+    cat === 'owner_drawing' ||
+    cat === 'owner_draw' ||
+    cat === 'owner_withdrawal' ||
+    cat === 'owner_cash_out' ||
+    cat === 'owner_payout' ||
+    cat === 'withdrawal' ||
+    cat === 'drawing'
+  ) {
+    return true;
+  }
+
+  // 2. Comprehensive Bengali withdrawal / drawing terms
+  // (চেক করা হবে categoryLabelBn, note, categoryLabelEn, customerName)
+  const labelBn = String(trx.categoryLabelBn || '').toLowerCase();
+  const noteBn = String(trx.note || '').toLowerCase();
+  const labelEn = String(trx.categoryLabelEn || '').toLowerCase();
+  const customerName = String(trx.customerName || '').toLowerCase();
+
+  const allText = `${cat} ${labelBn} ${noteBn} ${labelEn} ${customerName}`;
+
+  // Bengali withdrawal keywords & common spelling variants
+  const bnDrawingKeywords = [
+    'উত্তোলন',
+    'উতোলন',
+    'উত্তলন',
+    'উত্তোলনকৃত',
+    'উত্তলনকৃত',
+    'ড্রয়িং',
+    'ড্রয়িং',
+    'ড্রইং',
+    'ড্রয়িংস',
+    'তুলে নেওয়া',
+    'তুলে নেওয়া',
+    'তুলে নিল',
+    'তুলে নিছে',
+    'তুলে নিয়েছে',
+    'তুলে নিয়েছেন',
+    'টাকা নিল',
+    'টাকা নিছে',
+    'টাকা নিয়েছে',
+    'টাকা নেওয়া',
+    'টাকা নেওয়া',
+    'মালিক নিল',
+    'মালিক নিছে',
+    'মালিক নিয়েছে',
+    'মালিক নিলেন',
+    'মালিকের খরচ',
+    'ব্যক্তিগত খরচ',
+    'ব্যক্তিগত উত্তোলন',
+    'ক্যাশ উত্তোলন',
+    'মালিক উত্তোলন',
+  ];
+
+  for (const kw of bnDrawingKeywords) {
+    if (allText.includes(kw)) {
+      return true;
+    }
+  }
+
+  // 3. English withdrawal keywords
+  if (
+    /(owner\s*draw|drawing|drawings|withdraw|withdrawn|withdrawal|cash\s*out\s*owner|owner\s*payout|owner\s*expense)/i.test(
+      allText
+    )
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Identifies if a transaction is an Owner Deposit / Capital Injection
+ * মালিকের টাকা যুক্ত / মূলধন বিনিয়োগ (আয় নয়, মূলধন বৃদ্ধি)
+ * সতর্কতা: যদি এতে কোনোভাবে উত্তোলন বা ড্রয়িং এর লক্ষণ থাকে, এটি কোনো অবস্থাতেই ডিপোজিট হবে না!
+ */
+export function isOwnerDepositTrx(trx: Transaction): boolean {
+  if (!trx) return false;
+
+  // উত্তোলন শনাক্ত হলে কখনোই মূলধন বৃদ্ধি বা ডিপোজিট নয়!
+  if (isOwnerDrawingTrx(trx)) return false;
+
+  // 1. Explicit Category
+  const cat = String(trx.category || '').toLowerCase().trim();
+  if (
+    cat === 'owner_deposit' ||
+    cat === 'owner_capital' ||
+    cat === 'capital_injection' ||
+    cat === 'owner_investment'
+  ) {
+    return true;
+  }
+
+  // 2. If it's explicitly an operating EXPENSE, it cannot be an owner capital deposit
+  if (trx.type === 'EXPENSE') return false;
+
+  const labelBn = String(trx.categoryLabelBn || '').toLowerCase();
+  const noteBn = String(trx.note || '').toLowerCase();
+  const labelEn = String(trx.categoryLabelEn || '').toLowerCase();
+  const customerName = String(trx.customerName || '').toLowerCase();
+  const allText = `${cat} ${labelBn} ${noteBn} ${labelEn} ${customerName}`;
+
+  // 3. Category labels or notes with capital deposit phrases
+  const hasCapitalTerm =
+    allText.includes('মূলধন') ||
+    allText.includes('মালিক') ||
+    allText.includes('ড্রয়ার') ||
+    allText.includes('ড্রয়ার') ||
+    /capital|owner|equity/i.test(allText);
+
+  const hasDepositTerm =
+    allText.includes('জমা') ||
+    allText.includes('যুক্ত') ||
+    allText.includes('ইনভেস্ট') ||
+    allText.includes('বিনিয়োগ') ||
+    allText.includes('বিনিয়োগ') ||
+    /deposit|invest|inject|add\s*cash/i.test(allText);
+
+  if (hasCapitalTerm && hasDepositTerm) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -156,23 +262,28 @@ export function auditAllCalculations(
   let allTimeOwnerDrawings = 0;
 
   for (const trx of transactions) {
-    const isOwnerDep = isOwnerDepositTrx(trx);
     const isOwnerDraw = isOwnerDrawingTrx(trx);
+    const isOwnerDep = !isOwnerDraw && isOwnerDepositTrx(trx);
 
-    if (isOwnerDep) {
-      allTimeOwnerDeposits += Number(trx.amount || 0);
-    } else if (isOwnerDraw) {
+    if (isOwnerDraw) {
       allTimeOwnerDrawings += Number(trx.amount || 0);
+    } else if (isOwnerDep) {
+      allTimeOwnerDeposits += Number(trx.amount || 0);
     }
 
     const isTrxToday = isToday(trx.timestamp);
     const isTrxBeforeToday = isBeforeToday(trx.timestamp);
 
     // পূর্ববর্তী দিনগুলোর ক্যাশ হিসাব (বিগত দিনের সমাপনী ক্যাশ নির্ধারণের জন্য)
-    // বাকি বিক্রি (DUE) কখনো ক্যাশে যোগ হয়নি; বকেয়া পরিশোধ হলে তা CASH হিসেবে যুক্ত হয়েছে
+    // মালিকের উত্তোলন পূর্ববর্তী দিনের হলেও ক্যাশ বহির্গমন (ড্রয়ার কমায়); মালিকের জমা আগমন (ড্রয়ার বাড়ায়)
     if (isTrxBeforeToday) {
-      if (trx.paymentMethod === 'CASH') {
-        if (trx.type === 'INCOME') {
+      const isCash = !trx.paymentMethod || trx.paymentMethod === 'CASH';
+      if (isCash) {
+        if (isOwnerDraw) {
+          pastCashOutflow += trx.amount;
+        } else if (isOwnerDep) {
+          pastCashInflow += trx.amount;
+        } else if (trx.type === 'INCOME') {
           pastCashInflow += trx.amount;
         } else if (trx.type === 'EXPENSE') {
           pastCashOutflow += trx.amount;
@@ -182,9 +293,22 @@ export function auditAllCalculations(
 
     // আজকের দিনের হিসাব
     if (isTrxToday) {
-      if (trx.type === 'INCOME') {
+      const isCash = !trx.paymentMethod || trx.paymentMethod === 'CASH';
+      if (isOwnerDraw) {
+        // মালিকের ড্রয়ার উত্তোলন:
+        // "উত্তোলন কৃত টাকাও খরচ" -> ড্রয়ারের নগদ ক্যাশ কমবে!
+        // কিন্তু এটি ব্যবসায়ের ক্রয়মূল্য বা পরিচালন ব্যয় নয়
+        if (isCash) {
+          ownerCashWithdrawals += trx.amount;
+        }
+      } else if (isOwnerDep) {
+        // মালিকের ড্রয়ারে টাকা যুক্ত / মূলধন ক্যাশ জমা:
+        // শুধুমাত্র ড্রয়ারের নগদ ক্যাশ বৃদ্ধি পায় (বিক্রয় আয় নয়)
+        if (isCash) {
+          ownerCashDeposits += trx.amount;
+        }
+      } else if (trx.type === 'INCOME') {
         const isDueRepayment =
-          !isOwnerDep &&
           ((trx.category === 'other_income' || (trx.category as string) === 'due_collection') &&
           (
             (trx.categoryLabelBn && (trx.categoryLabelBn.includes('বাকি') || trx.categoryLabelBn.includes('বকেয়া'))) ||
@@ -192,16 +316,8 @@ export function auditAllCalculations(
             (trx.note && (trx.note.includes('বকেয়া') || trx.note.includes('বাকি')))
           ));
 
-        if (isOwnerDep) {
-          // মালিকের ড্রয়ারে টাকা যুক্ত / মূলধন ক্যাশ জমা:
-          // শুধুমাত্র ড্রয়ারের নগদ ক্যাশ বৃদ্ধি পায়! কোনো এমএফএস ব্যাংকিং প্রয়োজন নেই।
-          // এটি বিক্রয় আয় নয়, এটি মালিকের মূলধন বৃদ্ধি।
-          if (trx.paymentMethod === 'CASH') {
-            ownerCashDeposits += trx.amount;
-          }
-        } else if (isDueRepayment) {
+        if (isDueRepayment) {
           // বকেয়া আদায় / পরিশোধ:
-          // গ্রাহক বাকির টাকা পরিশোধ করলে তবেই ড্রয়ারের ক্যাশ বৃদ্ধি পায়!
           if (trx.paymentMethod === 'CASH') {
             dueCollectedInCash += trx.amount;
           } else if (trx.paymentMethod === 'BKASH') {
@@ -212,15 +328,12 @@ export function auditAllCalculations(
             digitalIncomeRocket += trx.amount;
           }
         } else {
-          // নতুন সেবা বা বিক্রয় আয় (নগদ বা বাকি বা ডিজিটাল):
+          // "যা আয় হবে তা বিক্রি মূল্য শুধুমাত্র মালিকের যুক্তকৃত টাকা বাদে"
           totalSalesAndServicesIncome += trx.amount;
 
           if (trx.paymentMethod === 'CASH') {
-            // নগদ বিক্রয়: ড্রয়ারের ক্যাশ বৃদ্ধি পাবে
             cashSalesIncome += trx.amount;
           } else if (trx.paymentMethod === 'DUE') {
-            // বাকিতে সেবা/পণ্য বিক্রি: ক্যাশ ড্রয়ারে ১ পয়সাও বাড়বে না ("বাকী খাতাও ক্যাশ বারবে না")
-            // এটি কাস্টমারের বকেয়া খাতায় জমা হয়
             todayDueSalesIncome += trx.amount;
           } else if (trx.paymentMethod === 'BKASH') {
             digitalIncomeBkash += trx.amount;
@@ -231,19 +344,10 @@ export function auditAllCalculations(
           }
         }
       } else if (trx.type === 'EXPENSE') {
-        if (isOwnerDraw) {
-          // মালিকের ড্রয়ার উত্তোলন:
-          // এটি সাধারণ দোকান পরিচালন খরচ নয়, তবে ড্রয়ার থেকে নগদ টাকা উত্তোলিত হয়েছে ("উত্তোলন কৃত টাকাও খরচ")
-          // শুধুমাত্র ড্রয়ারের নগদ ক্যাশ কমবে। এমএফএস ব্যাংকিংয়ে কোনো পরিবর্তন হবে না!
-          if (trx.paymentMethod === 'CASH') {
-            ownerCashWithdrawals += trx.amount;
-          }
-        } else {
-          // সাধারণ দোকান পরিচালনা খরচ (ভাড়া, বিদ্যুৎ, মাল ক্রয় ইত্যাদি)
-          totalOperatingExpenses += trx.amount;
-          if (trx.paymentMethod === 'CASH') {
-            cashExpenses += trx.amount;
-          }
+        // "সকল খরচ ই ক্রয়মুল্য শুধুমাত্র মালিকের উত্তোলনকৃত টাকা বাদে"
+        totalOperatingExpenses += trx.amount;
+        if (trx.paymentMethod === 'CASH') {
+          cashExpenses += trx.amount;
         }
       }
     }
@@ -446,29 +550,12 @@ export function getOwnerLedgerData(
   const items: OwnerLedgerItem[] = [];
 
   for (const trx of sorted) {
-    const isDep = isOwnerDepositTrx(trx);
+    const isDraw = isOwnerDrawingTrx(trx);
+    const isDep = !isDraw && isOwnerDepositTrx(trx);
     const amount = Number(trx.amount || 0);
     const isTrxToday = isToday(trx.timestamp);
 
-    if (isDep) {
-      totalDeposited += amount;
-      if (isTrxToday) todayDeposited += amount;
-      runningCapital += amount;
-
-      items.push({
-        id: trx.id,
-        invoiceNo: trx.invoiceNo || '',
-        timestamp: trx.timestamp,
-        type: 'DEPOSIT',
-        amount,
-        note: trx.note || 'মালিকের মূলধন ক্যাশ জমা / টাকা যুক্ত',
-        paymentMethod: trx.paymentMethodLabelBn || 'ক্যাশ ড্রয়ার',
-        runningCapitalBalance: runningCapital,
-        isExcessDrawing: false,
-        excessAmount: 0,
-        trx,
-      });
-    } else {
+    if (isDraw) {
       totalWithdrawn += amount;
       if (isTrxToday) todayWithdrawn += amount;
 
@@ -494,6 +581,24 @@ export function getOwnerLedgerData(
         runningCapitalBalance: runningCapital,
         isExcessDrawing,
         excessAmount,
+        trx,
+      });
+    } else if (isDep) {
+      totalDeposited += amount;
+      if (isTrxToday) todayDeposited += amount;
+      runningCapital += amount;
+
+      items.push({
+        id: trx.id,
+        invoiceNo: trx.invoiceNo || '',
+        timestamp: trx.timestamp,
+        type: 'DEPOSIT',
+        amount,
+        note: trx.note || 'মালিকের মূলধন ক্যাশ জমা / টাকা যুক্ত',
+        paymentMethod: trx.paymentMethodLabelBn || 'ক্যাশ ড্রয়ার',
+        runningCapitalBalance: runningCapital,
+        isExcessDrawing: false,
+        excessAmount: 0,
         trx,
       });
     }
